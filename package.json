@@ -4,13 +4,14 @@
   "workspaces": [
     "packages/shared",
     "apps/api",
-    "apps/extension"
+    "apps/extension",
+    "apps/web"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {},
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "typescript": "~6.0.3"
   }
 }
