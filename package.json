@@ -1,0 +1,13 @@
+{
+  "name": "yomipop",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/extension"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {}
+}

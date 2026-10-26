@@ -1,0 +1,28 @@
+# Dependencies (rebuilt by npm install)
+node_modules/
+
+# Build output
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Secrets — never commit these
+.env
+.env.*
+!.env.example
+
+# Generated dictionary data (build-dictionary.ts recreates it)
+apps/extension/public/dict/
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+
+# Logs and OS/editor junk
+*.log
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
