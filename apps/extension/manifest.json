@@ -3,6 +3,8 @@
   "name": "YomiPop",
   "version": "0.0.1",
   "description": "Hover Japanese words to see their reading and meaning.",
+  "action": { "default_popup": "src/menu/menu.html" },
+  "permissions": ["storage"],
   "background": {
     "service_worker": "src/background/index.ts",
     "type": "module"

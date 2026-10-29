@@ -1,19 +1,23 @@
 import type { DictionaryEntry } from "../dictionary/types";
 import type { LookupMessage } from "../messages";
+import { getSettings, onSettingsChanged, type Trigger } from "../settings";
 import { getTextAtPoint } from "./getTextAtPoint";
 import { hidePopup, showPopup } from "./popup";
 
+// Sets how long the cursor must rest on a word in hover mode.
+const HOVER_DELAY = 150;
+
+let trigger: Trigger = "shift";
 let latestLookup = 0;
+let hoverTimer: number | undefined;
 
-// Looks up the word under the cursor while Shift is held.
-document.addEventListener("mousemove", async (event) => {
+getSettings().then((settings) => (trigger = settings.trigger));
+onSettingsChanged((settings) => (trigger = settings.trigger));
+
+// Shows the pop-up for the word at the point, or hides it if there's none.
+async function lookUp(x: number, y: number): Promise<void> {
   const lookup = ++latestLookup;
-  if (!event.shiftKey) {
-    hidePopup();
-    return;
-  }
-
-  const text = getTextAtPoint(event.clientX, event.clientY);
+  const text = getTextAtPoint(x, y);
   if (!text) {
     hidePopup();
     return;
@@ -23,8 +27,25 @@ document.addEventListener("mousemove", async (event) => {
   const entries: DictionaryEntry[] = await chrome.runtime.sendMessage(message);
   if (lookup !== latestLookup) return;
 
-  if (entries.length > 0) showPopup(entries, event.clientX, event.clientY);
+  if (entries.length > 0) showPopup(entries, x, y);
   else hidePopup();
+}
+
+// Looks up the word under the cursor, right away with Shift or after a pause in hover mode.
+document.addEventListener("mousemove", (event) => {
+  clearTimeout(hoverTimer);
+  latestLookup++;
+
+  if (trigger === "hover") {
+    hoverTimer = window.setTimeout(
+      () => lookUp(event.clientX, event.clientY),
+      HOVER_DELAY,
+    );
+  } else if (event.shiftKey) {
+    lookUp(event.clientX, event.clientY);
+  } else {
+    hidePopup();
+  }
 });
 
 // Closes the pop-up on Escape.
