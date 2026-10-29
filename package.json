@@ -8,7 +8,7 @@
     "apps/web"
   ],
   "engines": {
-    "node": ">=22.12"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "concurrently -n api,web,ext -c blue,magenta,yellow \"npm run dev -w apps/api\" \"npm run dev -w apps/web\" \"npm run dev -w apps/extension\"",
