@@ -32,10 +32,35 @@
         padding: 4px 0;
         cursor: pointer;
       }
+      .account {
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #3a4048;
+        color: #9fb3c8;
+      }
+      .account p {
+        margin: 0;
+      }
+      button {
+        display: block;
+        width: 100%;
+        margin-top: 6px;
+        padding: 6px;
+        border: none;
+        border-radius: 6px;
+        background: #f0f3f6;
+        color: #1f2328;
+        font: inherit;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
     <h1>YomiPop</h1>
+    <div class="account">
+      <p id="account-status">Checking login…</p>
+      <button id="log-in" hidden>Log in</button>
+    </div>
     <fieldset>
       <legend>Show pop-up on</legend>
       <label

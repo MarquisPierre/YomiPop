@@ -11,6 +11,7 @@ const HOVER_DELAY = 150;
 const SAVE_RESULTS: Record<AddCardResult, string> = {
   added: "Saved ✓",
   exists: "Already saved",
+  loggedOut: "Log in from the YomiPop menu",
   error: "Couldn't save (is the API running?)",
 };
 

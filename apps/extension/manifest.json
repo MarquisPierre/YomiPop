@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "description": "Hover Japanese words to see their reading and meaning.",
   "action": { "default_popup": "src/menu/menu.html" },
-  "permissions": ["storage", "scripting"],
+  "permissions": ["storage", "scripting", "cookies"],
   "host_permissions": ["http://localhost:4000/*"],
   "background": {
     "service_worker": "src/background/index.ts",

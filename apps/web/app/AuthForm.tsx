@@ -74,7 +74,11 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           email,
           password,
         })
-      : await authClient.signIn.email({ email, password });
+      : await authClient.signIn.email({
+          email,
+          password,
+          rememberMe: form.get("rememberMe") === "on",
+        });
     setBusy(false);
 
     if (error) setError(error.message ?? "Something went wrong.");
@@ -125,6 +129,13 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           {showPassword ? <EyeOffIcon /> : <EyeIcon />}
         </button>
       </div>
+
+      {!signingUp && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="rememberMe" defaultChecked />
+          Remember me
+        </label>
+      )}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
