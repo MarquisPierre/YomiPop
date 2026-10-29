@@ -6,6 +6,7 @@ dist/
 .next/
 out/
 *.tsbuildinfo
+apps/api/src/generated/
 
 # Secrets — never commit these
 .env
