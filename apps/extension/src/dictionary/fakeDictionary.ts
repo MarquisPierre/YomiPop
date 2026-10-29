@@ -24,7 +24,7 @@ const dictionary = new Map(entries.map((entry) => [entry.word, entry]));
 const MAX_WORD_LENGTH = 10;
 
 // Returns the longest word found at the start of the text, or undefined.
-export function lookupLongest(text: string): DictionaryEntry | undefined {
+export function findWord(text: string): DictionaryEntry | undefined {
   const maxLength = Math.min(text.length, MAX_WORD_LENGTH);
 
   for (let length = maxLength; length > 0; length--) {

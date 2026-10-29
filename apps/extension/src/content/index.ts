@@ -1,4 +1,4 @@
-import { lookupLongest } from "../dictionary/fakeDictionary";
+import { findWord } from "../dictionary/fakeDictionary";
 import { getTextAtPoint } from "./getTextAtPoint";
 import { hidePopup, showPopup } from "./popup";
 
@@ -10,7 +10,7 @@ document.addEventListener("mousemove", (event) => {
   }
 
   const text = getTextAtPoint(event.clientX, event.clientY);
-  const entry = text ? lookupLongest(text) : undefined;
+  const entry = text ? findWord(text) : undefined;
 
   if (entry) {
     showPopup(entry, event.clientX, event.clientY);
