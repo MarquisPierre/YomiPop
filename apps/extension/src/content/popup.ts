@@ -1,4 +1,4 @@
-import type { DictionaryEntry } from "../dictionary/fakeDictionary";
+import type { SampleEntry } from "../dictionary/fakeDictionary";
 
 // Sets the gap between the cursor and the pop-up.
 const CURSOR_OFFSET = 12;
@@ -43,7 +43,7 @@ function createPopup(): HTMLDivElement {
 }
 
 // Shows the entry next to the given point.
-export function showPopup(entry: DictionaryEntry, x: number, y: number): void {
+export function showPopup(entry: SampleEntry, x: number, y: number): void {
   popup ??= createPopup();
 
   const word = document.createElement("span");
