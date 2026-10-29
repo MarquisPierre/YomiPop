@@ -1,7 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getDueCards, reviewCard, type Card, type Rating } from "@/lib/api";
+import {
+  getDueCards,
+  NotLoggedInError,
+  reviewCard,
+  type Card,
+  type Rating,
+} from "@/lib/api";
 
 // Lists the answer buttons in order.
 const ANSWERS: { rating: Rating; label: string }[] = [
@@ -13,18 +20,23 @@ const ANSWERS: { rating: Rating; label: string }[] = [
 
 // Shows due cards one at a time and sends each answer to the API.
 export function ReviewSession() {
+  const router = useRouter();
   const [cards, setCards] = useState<Card[] | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Loads the due cards.
+  // Loads the due cards, or sends the user to sign in if they're logged out.
   function loadCards() {
     getDueCards()
       .then(setCards)
-      .catch(() => setError("Couldn't reach the API. Is it running?"));
+      .catch((error) =>
+        error instanceof NotLoggedInError
+          ? router.replace("/sign-in")
+          : setError("Couldn't reach the API. Is it running?"),
+      );
   }
 
-  useEffect(loadCards, []);
+  useEffect(loadCards, [router]);
 
   const card = cards?.[0];
 
