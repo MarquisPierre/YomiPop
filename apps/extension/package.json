@@ -2,5 +2,14 @@
   "name": "@yomipop/extension",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^3.0.0",
+    "@types/chrome": "^0.3.7",
+    "vite": "^8.3.5"
+  }
 }

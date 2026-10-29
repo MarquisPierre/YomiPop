@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "YomiPop",
+  "version": "0.0.1",
+  "description": "Hover Japanese words to see their reading and meaning.",
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/index.ts"]
+    }
+  ]
+}
