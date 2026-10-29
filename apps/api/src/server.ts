@@ -1,8 +1,14 @@
 import "dotenv/config";
+import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { cardRoutes } from "./routes/cards.js";
 
 const app = Fastify({ logger: true });
+
+// Lets the web app call the API from the browser.
+app.register(cors, {
+  origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
+});
 
 app.get("/health", async () => {
   return { status: "ok" };
