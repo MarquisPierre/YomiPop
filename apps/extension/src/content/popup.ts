@@ -1,7 +1,10 @@
-import type { SampleEntry } from "../dictionary/fakeDictionary";
+import type { DictionaryEntry } from "../dictionary/types";
 
 // Sets the gap between the cursor and the pop-up.
 const CURSOR_OFFSET = 12;
+
+// Sets how many entries the pop-up shows at once.
+const MAX_ENTRIES = 3;
 
 // Styles the pop-up. The shadow root keeps the page's CSS out.
 const STYLES = `
@@ -20,6 +23,7 @@ const STYLES = `
   .word { font-size: 22px; font-weight: 600; }
   .reading { margin-left: 8px; color: #9fb3c8; }
   .meanings { margin: 6px 0 0; padding-left: 18px; }
+  .entry + .entry { margin-top: 10px; padding-top: 10px; border-top: 1px solid #3a4048; }
 `;
 
 let popup: HTMLDivElement | null = null;
@@ -42,31 +46,42 @@ function createPopup(): HTMLDivElement {
   return element;
 }
 
-// Shows the entry next to the given point.
-export function showPopup(entry: SampleEntry, x: number, y: number): void {
+// Shows the entries next to the given point.
+export function showPopup(
+  entries: DictionaryEntry[],
+  x: number,
+  y: number,
+): void {
   popup ??= createPopup();
+  popup.replaceChildren(...entries.slice(0, MAX_ENTRIES).map(renderEntry));
+  popup.hidden = false;
+  positionPopup(popup, x, y);
+}
 
+// Builds the word, reading and meanings for one entry.
+function renderEntry(entry: DictionaryEntry): HTMLDivElement {
   const word = document.createElement("span");
   word.className = "word";
   word.lang = "ja";
-  word.textContent = entry.word;
+  word.textContent = entry.kanji[0] ?? entry.readings[0] ?? "";
 
   const reading = document.createElement("span");
   reading.className = "reading";
   reading.lang = "ja";
-  reading.textContent = entry.reading;
+  reading.textContent = entry.kanji.length > 0 ? (entry.readings[0] ?? "") : "";
 
   const meanings = document.createElement("ol");
   meanings.className = "meanings";
-  for (const meaning of entry.meanings) {
+  for (const sense of entry.senses) {
     const item = document.createElement("li");
-    item.textContent = meaning;
+    item.textContent = sense.meanings.join("; ");
     meanings.append(item);
   }
 
-  popup.replaceChildren(word, reading, meanings);
-  popup.hidden = false;
-  positionPopup(popup, x, y);
+  const element = document.createElement("div");
+  element.className = "entry";
+  element.append(word, reading, meanings);
+  return element;
 }
 
 // Hides the pop-up if it's showing.
