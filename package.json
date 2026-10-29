@@ -10,8 +10,19 @@
   "engines": {
     "node": ">=20"
   },
-  "scripts": {},
+  "scripts": {
+    "dev": "concurrently -n api,web,ext -c blue,magenta,yellow \"npm run dev -w apps/api\" \"npm run dev -w apps/web\" \"npm run dev -w apps/extension\"",
+    "lint": "eslint . && npm run lint -w apps/web",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
   "devDependencies": {
-    "typescript": "~6.0.3"
+    "@eslint/js": "^9.39.5",
+    "concurrently": "^10.0.6",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1"
   }
 }
