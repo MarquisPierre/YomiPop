@@ -41,11 +41,16 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
     return prisma.card.findMany({ orderBy: { createdAt: "desc" } });
   });
 
-  // Saves a new card.
+  // Saves a new card, unless its dictionary entry is already saved.
   app.post<{ Body: NewCard }>(
     "/cards",
     { schema: { body: newCardSchema } },
     async (request, reply) => {
+      const { entryId } = request.body;
+      if (entryId && (await prisma.card.findUnique({ where: { entryId } }))) {
+        return reply.code(409).send({ message: "Card already saved" });
+      }
+
       const card = await prisma.card.create({ data: request.body });
       return reply.code(201).send(card);
     },

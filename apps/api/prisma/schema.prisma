@@ -13,7 +13,7 @@ model Card {
   word      String
   reading   String
   meanings  String[]
-  entryId   String?
+  entryId   String?  @unique
   createdAt DateTime @default(now())
 
   dueAt          DateTime  @default(now())

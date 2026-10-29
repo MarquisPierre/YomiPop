@@ -24,9 +24,15 @@ const STYLES = `
   .reading { margin-left: 8px; color: #9fb3c8; }
   .meanings { margin: 6px 0 0; padding-left: 18px; }
   .entry + .entry { margin-top: 10px; padding-top: 10px; border-top: 1px solid #3a4048; }
+  .status { margin-top: 8px; padding-top: 6px; border-top: 1px solid #3a4048; font-size: 12px; color: #9fb3c8; }
 `;
 
+// Sets the footer text shown before anything is saved.
+const SAVE_HINT = "A to save";
+
 let popup: HTMLDivElement | null = null;
+let status: HTMLDivElement | null = null;
+let shownEntries: DictionaryEntry[] = [];
 
 // Builds the pop-up once and attaches it to the page.
 function createPopup(): HTMLDivElement {
@@ -53,9 +59,25 @@ export function showPopup(
   y: number,
 ): void {
   popup ??= createPopup();
-  popup.replaceChildren(...entries.slice(0, MAX_ENTRIES).map(renderEntry));
+  shownEntries = entries.slice(0, MAX_ENTRIES);
+
+  status = document.createElement("div");
+  status.className = "status";
+  status.textContent = SAVE_HINT;
+
+  popup.replaceChildren(...shownEntries.map(renderEntry), status);
   popup.hidden = false;
   positionPopup(popup, x, y);
+}
+
+// Replaces the footer text, e.g. after saving a card.
+export function setPopupStatus(text: string): void {
+  if (status) status.textContent = text;
+}
+
+// Lists the entries on screen, or none if the pop-up is hidden.
+export function getShownEntries(): DictionaryEntry[] {
+  return popup && !popup.hidden ? shownEntries : [];
 }
 
 // Builds the word, reading and meanings for one entry.
