@@ -1,5 +1,5 @@
 import { WEB_URL } from "../config";
-import { getSignedInUser } from "../session";
+import { getSignedInUser, signOut } from "../session";
 import { getSettings, saveSettings, type Trigger } from "../settings";
 
 const options = document.querySelectorAll<HTMLInputElement>(
@@ -7,6 +7,7 @@ const options = document.querySelectorAll<HTMLInputElement>(
 );
 const accountStatus = document.getElementById("account-status")!;
 const logInButton = document.getElementById("log-in")!;
+const logOutButton = document.getElementById("log-out")!;
 
 // Saves the choice whenever an option is picked.
 for (const option of options) {
@@ -26,10 +27,20 @@ logInButton.addEventListener("click", () => {
   chrome.tabs.create({ url: `${WEB_URL}/sign-in` });
 });
 
-// Shows who's logged in, or the Log in button if nobody is.
-getSignedInUser().then((user) => {
+// Logs out everywhere and updates the menu.
+logOutButton.addEventListener("click", async () => {
+  await signOut();
+  showAccount();
+});
+
+// Shows who's logged in with a Log out button, or the Log in button if nobody is.
+async function showAccount(): Promise<void> {
+  const user = await getSignedInUser();
   accountStatus.textContent = user
     ? `Signed in as ${user.name}`
     : "Not logged in";
   logInButton.hidden = Boolean(user);
-});
+  logOutButton.hidden = !user;
+}
+
+showAccount();
