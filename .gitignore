@@ -14,6 +14,7 @@ out/
 
 # Generated dictionary data (build-dictionary.ts recreates it)
 apps/extension/public/dict/
+data/
 
 # Test output
 coverage/

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>YomiPop</title>
+    <style>
+      body {
+        width: 220px;
+        margin: 0;
+        padding: 12px;
+        font:
+          14px system-ui,
+          sans-serif;
+        background: #1f2328;
+        color: #f0f3f6;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 16px;
+      }
+      fieldset {
+        margin: 0;
+        padding: 0;
+        border: none;
+      }
+      legend {
+        margin-bottom: 6px;
+        color: #9fb3c8;
+      }
+      label {
+        display: block;
+        padding: 4px 0;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>YomiPop</h1>
+    <fieldset>
+      <legend>Show pop-up on</legend>
+      <label
+        ><input type="radio" name="trigger" value="shift" /> Shift +
+        hover</label
+      >
+      <label><input type="radio" name="trigger" value="hover" /> Hover</label>
+    </fieldset>
+    <script type="module" src="./menu.ts"></script>
+  </body>
+</html>
