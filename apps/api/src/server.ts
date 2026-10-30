@@ -4,11 +4,16 @@ import Fastify from "fastify";
 import { authRoutes } from "./routes/auth.js";
 import { cardRoutes } from "./routes/cards.js";
 
-const app = Fastify({ logger: true });
+// Rejects request bodies with unknown fields instead of quietly dropping them.
+const app = Fastify({
+  logger: true,
+  ajv: { customOptions: { removeAdditional: false } },
+});
 
 // Lets the web app call the API from the browser, sending its login cookie.
 app.register(cors, {
   origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
+  methods: ["GET", "POST", "PATCH", "DELETE"],
   credentials: true,
 });
 

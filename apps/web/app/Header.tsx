@@ -21,9 +21,14 @@ export function Header() {
         YomiPop
       </Link>
       {session && (
-        <Link href="/review" className="text-zinc-500 hover:text-current">
-          Review
-        </Link>
+        <>
+          <Link href="/review" className="text-zinc-500 hover:text-current">
+            Review
+          </Link>
+          <Link href="/cards" className="text-zinc-500 hover:text-current">
+            Cards
+          </Link>
+        </>
       )}
 
       <div className="ml-auto text-sm text-zinc-500">

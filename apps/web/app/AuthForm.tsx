@@ -2,12 +2,34 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { authClient } from "@/lib/authClient";
 
 // Styles the text boxes in the form.
 const INPUT_CLASS =
   "rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700";
+
+// Names the browser storage slot that holds the remembered email.
+const EMAIL_KEY = "yomipop.rememberedEmail";
+
+// Reads the remembered email, if any. Storage can be blocked, so failures count as none.
+function loadRememberedEmail(): string | null {
+  try {
+    return localStorage.getItem(EMAIL_KEY);
+  } catch {
+    return null;
+  }
+}
+
+// Remembers the email, or forgets it when given null.
+function saveRememberedEmail(email: string | null): void {
+  try {
+    if (email) localStorage.setItem(EMAIL_KEY, email);
+    else localStorage.removeItem(EMAIL_KEY);
+  } catch {
+    // Storage is blocked, so there's nothing to remember with.
+  }
+}
 
 // Draws an open eye, for showing the password.
 function EyeIcon() {
@@ -57,7 +79,16 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const emailInput = useRef<HTMLInputElement>(null);
   const signingUp = mode === "sign-up";
+
+  // Fills in the remembered email when signing in.
+  useEffect(() => {
+    const email = loadRememberedEmail();
+    if (!signingUp && email && emailInput.current) {
+      emailInput.current.value = email;
+    }
+  }, [signingUp]);
 
   // Sends the form to Better Auth and moves on if it worked.
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -65,6 +96,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email"));
     const password = String(form.get("password"));
+    const rememberMe = signingUp || form.get("rememberMe") === "on";
 
     setBusy(true);
     setError(null);
@@ -77,12 +109,16 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       : await authClient.signIn.email({
           email,
           password,
-          rememberMe: form.get("rememberMe") === "on",
+          rememberMe,
         });
     setBusy(false);
 
-    if (error) setError(error.message ?? "Something went wrong.");
-    else router.push("/review");
+    if (error) {
+      setError(error.message ?? "Something went wrong.");
+      return;
+    }
+    saveRememberedEmail(rememberMe ? email : null);
+    router.push("/review");
   }
 
   return (
@@ -103,6 +139,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         />
       )}
       <input
+        ref={emailInput}
         name="email"
         type="email"
         placeholder="Email"

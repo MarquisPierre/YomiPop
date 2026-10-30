@@ -23,6 +23,40 @@ function checkResponse(response: Response): void {
   if (!response.ok) throw new Error(`API returned ${response.status}`);
 }
 
+// Describes the parts of a card the user can edit.
+export type CardChanges = Partial<Pick<Card, "word" | "reading" | "meanings">>;
+
+// Fetches all of the user's cards, newest first.
+export async function getCards(): Promise<Card[]> {
+  const response = await fetch(`${API_URL}/cards`, { credentials: "include" });
+  checkResponse(response);
+  return response.json();
+}
+
+// Saves changes to a card and returns the updated card.
+export async function updateCard(
+  id: string,
+  changes: CardChanges,
+): Promise<Card> {
+  const response = await fetch(`${API_URL}/cards/${id}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(changes),
+  });
+  checkResponse(response);
+  return response.json();
+}
+
+// Deletes a card.
+export async function deleteCard(id: string): Promise<void> {
+  const response = await fetch(`${API_URL}/cards/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  checkResponse(response);
+}
+
 // Fetches the cards that are due now.
 export async function getDueCards(): Promise<Card[]> {
   const response = await fetch(`${API_URL}/cards/due`, {
