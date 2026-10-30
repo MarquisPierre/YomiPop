@@ -11,7 +11,7 @@ const PRIMARY_CLASS =
 const SECONDARY_CLASS =
   "rounded-lg border border-zinc-300 px-6 py-3 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
-// Shows review and sign-out when signed in, or sign-in and sign-up when not.
+// Shows the review button when signed in, or sign-in and sign-up when not.
 export function UserMenu() {
   const { data: session, isPending } = authClient.useSession();
 
@@ -31,16 +31,8 @@ export function UserMenu() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <Link href="/review" className={PRIMARY_CLASS}>
-        Start review
-      </Link>
-      <p className="text-sm text-zinc-500">
-        Signed in as {session.user.name} ·{" "}
-        <button onClick={() => authClient.signOut()} className="underline">
-          Sign out
-        </button>
-      </p>
-    </div>
+    <Link href="/review" className={PRIMARY_CLASS}>
+      Start review
+    </Link>
   );
 }

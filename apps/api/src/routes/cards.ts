@@ -32,6 +32,21 @@ const newCardSchema = {
   },
 } as const;
 
+// Describes the fields a card edit can change.
+type CardChanges = Partial<Pick<NewCard, "word" | "reading" | "meanings">>;
+
+// Checks card edits. Only the word, reading and meanings can change, never the schedule.
+const cardChangesSchema = {
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: {
+    word: { type: "string", minLength: 1 },
+    reading: { type: "string" },
+    meanings: { type: "array", items: { type: "string" }, minItems: 1 },
+  },
+} as const;
+
 // Checks review answers: 1 = Again, 2 = Hard, 3 = Good, 4 = Easy.
 const reviewSchema = {
   type: "object",
@@ -83,6 +98,36 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
         data: { ...request.body, userId },
       });
       return reply.code(201).send(card);
+    },
+  );
+
+  // Changes a card's word, reading or meanings.
+  app.patch<{ Params: { id: string }; Body: CardChanges }>(
+    "/cards/:id",
+    { schema: { body: cardChangesSchema } },
+    async (request, reply) => {
+      const where = { id: request.params.id, userId: request.userId };
+      if (!(await prisma.card.findFirst({ where }))) {
+        return reply.code(404).send({ message: "Card not found" });
+      }
+      return prisma.card.update({
+        where: { id: request.params.id },
+        data: request.body,
+      });
+    },
+  );
+
+  // Deletes a card and its review history.
+  app.delete<{ Params: { id: string } }>(
+    "/cards/:id",
+    async (request, reply) => {
+      const { count } = await prisma.card.deleteMany({
+        where: { id: request.params.id, userId: request.userId },
+      });
+      if (count === 0) {
+        return reply.code(404).send({ message: "Card not found" });
+      }
+      return reply.code(204).send();
     },
   );
 

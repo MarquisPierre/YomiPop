@@ -21,6 +21,24 @@ export async function getSessionToken(): Promise<string | null> {
   return null;
 }
 
+// Ends the session on the API, which logs out the web app too, and removes the cookie.
+export async function signOut(): Promise<void> {
+  const token = await getSessionToken();
+  if (token) {
+    await fetch(`${API_URL}/api/auth/sign-out`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: "{}",
+    }).catch(() => {});
+  }
+  for (const name of COOKIE_NAMES) {
+    await chrome.cookies.remove({ url: API_URL, name });
+  }
+}
+
 // Asks the API who's logged in, or returns null if nobody is.
 export async function getSignedInUser(): Promise<SignedInUser | null> {
   const token = await getSessionToken();
