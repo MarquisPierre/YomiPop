@@ -103,6 +103,8 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const emailInput = useRef<HTMLInputElement>(null);
   const signingUp = mode === "sign-up";
 
@@ -124,11 +126,13 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
 
     setBusy(true);
     setError(null);
+    setUnverifiedEmail(null);
     const { error } = signingUp
       ? await authClient.signUp.email({
           name: String(form.get("name")),
           email,
           password,
+          callbackURL: "/review",
         })
       : await authClient.signIn.email({
           email,
@@ -137,12 +141,31 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         });
     setBusy(false);
 
+    if (error?.code === "EMAIL_NOT_VERIFIED") {
+      setError("Verify your email first. Check your inbox for the link.");
+      setUnverifiedEmail(email);
+      return;
+    }
     if (error) {
       setError(error.message ?? "Something went wrong.");
       return;
     }
     saveRememberedEmail(rememberMe ? email : null);
-    router.push("/review");
+    if (signingUp) setSentTo(email);
+    else router.push("/review");
+  }
+
+  // Sends the verification link again.
+  async function resendEmail(email: string) {
+    setBusy(true);
+    const { error } = await authClient.sendVerificationEmail({
+      email,
+      callbackURL: "/review",
+    });
+    setBusy(false);
+    setUnverifiedEmail(null);
+    if (error) setError(error.message ?? "Couldn't send the email.");
+    else setSentTo(email);
   }
 
   // Sends the user to Google, which sends them back to their reviews once they've signed in.
@@ -157,6 +180,26 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       setBusy(false);
       setError(error.message ?? "Couldn't reach Google.");
     }
+  }
+
+  if (sentTo) {
+    return (
+      <div className="flex w-full max-w-sm flex-col gap-3">
+        <h1 className="mb-2 text-3xl font-semibold">Check your email</h1>
+        <p>
+          We sent a link to <strong>{sentTo}</strong>. Click it to verify your
+          email and sign in.
+        </p>
+        <button
+          type="button"
+          onClick={() => resendEmail(sentTo)}
+          disabled={busy}
+          className="text-left text-sm text-zinc-500 underline disabled:opacity-50"
+        >
+          Didn&apos;t get it? Send it again
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -229,6 +272,16 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       )}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
+      {unverifiedEmail && (
+        <button
+          type="button"
+          onClick={() => resendEmail(unverifiedEmail)}
+          disabled={busy}
+          className="text-left text-sm underline disabled:opacity-50"
+        >
+          Resend email
+        </button>
+      )}
 
       <button
         type="submit"

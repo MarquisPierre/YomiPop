@@ -2,13 +2,26 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { bearer } from "better-auth/plugins/bearer";
 import { prisma } from "./db.js";
+import { sendEmail } from "./email.js";
 
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
 
 // Handles sign-up, log-in and sessions.
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
-  emailAndPassword: { enabled: true },
+  // Keeps new accounts from signing in until they click the link in their email.
+  emailAndPassword: { enabled: true, requireEmailVerification: true },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendEmail(
+        user.email,
+        "Verify your YomiPop email",
+        `Hi ${user.name},\n\nClick this link to verify your email and start using YomiPop:\n${url}\n\nIf you didn't sign up, you can ignore this email.`,
+      );
+    },
+  },
   // Turns on "Continue with Google" only when its settings are present.
   socialProviders:
     GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
