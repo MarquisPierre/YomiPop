@@ -34,7 +34,10 @@ export function Header() {
       <div className="ml-auto text-sm text-zinc-500">
         {isPending ? null : session ? (
           <>
-            {session.user.name} ·{" "}
+            <Link href="/account" className="hover:text-current">
+              {session.user.name}
+            </Link>{" "}
+            ·{" "}
             <button onClick={signOut} className="underline">
               Sign out
             </button>
