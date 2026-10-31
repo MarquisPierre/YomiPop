@@ -44,6 +44,8 @@ export const auth = betterAuth({
           },
         }
       : {},
+  // Lets users delete their account, which also deletes their cards and reviews.
+  user: { deleteUser: { enabled: true } },
   // Logs a Google user into the existing account with the same email, since Google has checked it.
   account: { accountLinking: { trustedProviders: ["google"] } },
   trustedOrigins: [process.env.WEB_ORIGIN ?? "http://localhost:3000"],
