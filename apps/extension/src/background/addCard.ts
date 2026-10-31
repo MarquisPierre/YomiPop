@@ -1,4 +1,4 @@
-import { API_URL } from "../config";
+import { WEB_URL } from "../config";
 import type { DictionaryEntry } from "../dictionary/types";
 import type { AddCardResult } from "../messages";
 import { getSessionToken } from "../session";
@@ -16,7 +16,7 @@ export async function addCard(entry: DictionaryEntry): Promise<AddCardResult> {
   };
 
   try {
-    const response = await fetch(`${API_URL}/cards`, {
+    const response = await fetch(`${WEB_URL}/api/cards`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
