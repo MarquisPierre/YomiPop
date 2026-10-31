@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+dist-prod/
 .next/
 out/
 *.tsbuildinfo
@@ -12,6 +13,8 @@ apps/api/src/generated/
 .env
 .env.*
 !.env.example
+# The extension's live address isn't secret, so it's committed.
+!apps/extension/.env.production
 
 # Generated dictionary data (build-dictionary.ts recreates it)
 apps/extension/public/dict/

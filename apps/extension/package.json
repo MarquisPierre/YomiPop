@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build --outDir dist-prod"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^3.0.0",
