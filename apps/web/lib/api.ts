@@ -1,6 +1,5 @@
-// Points at the YomiPop API.
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+// Points at the card routes. The web app forwards /api to the API (see next.config.ts).
+const CARDS_URL = "/api/cards";
 
 // Describes a card as the API sends it.
 export interface Card {
@@ -28,7 +27,7 @@ export type CardChanges = Partial<Pick<Card, "word" | "reading" | "meanings">>;
 
 // Fetches all of the user's cards, newest first.
 export async function getCards(): Promise<Card[]> {
-  const response = await fetch(`${API_URL}/cards`, { credentials: "include" });
+  const response = await fetch(CARDS_URL);
   checkResponse(response);
   return response.json();
 }
@@ -38,9 +37,8 @@ export async function updateCard(
   id: string,
   changes: CardChanges,
 ): Promise<Card> {
-  const response = await fetch(`${API_URL}/cards/${id}`, {
+  const response = await fetch(`${CARDS_URL}/${id}`, {
     method: "PATCH",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(changes),
   });
@@ -50,27 +48,21 @@ export async function updateCard(
 
 // Deletes a card.
 export async function deleteCard(id: string): Promise<void> {
-  const response = await fetch(`${API_URL}/cards/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
+  const response = await fetch(`${CARDS_URL}/${id}`, { method: "DELETE" });
   checkResponse(response);
 }
 
 // Fetches the cards that are due now.
 export async function getDueCards(): Promise<Card[]> {
-  const response = await fetch(`${API_URL}/cards/due`, {
-    credentials: "include",
-  });
+  const response = await fetch(`${CARDS_URL}/due`);
   checkResponse(response);
   return response.json();
 }
 
 // Sends an answer for a card.
 export async function reviewCard(id: string, rating: Rating): Promise<void> {
-  const response = await fetch(`${API_URL}/cards/${id}/review`, {
+  const response = await fetch(`${CARDS_URL}/${id}/review`, {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rating }),
   });

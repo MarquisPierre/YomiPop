@@ -5,11 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "build": "prisma generate && tsc",
+    "start": "prisma migrate deploy && node dist/server.js"
   },
   "dependencies": {
-    "@fastify/cors": "^11.3.1",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "better-auth": "^1.7.14",
