@@ -51,6 +51,30 @@ describe("deinflect", () => {
     expect(forms("きます")).toContain("くる");
     expect(forms("行って")).toContain("行く");
   });
+
+  it("undoes ている and てる", () => {
+    expect(forms("食べている")).toContain("食べる");
+    expect(forms("食べてる")).toContain("食べる");
+  });
+
+  it("undoes でいる and でる after godan verbs", () => {
+    expect(forms("読んでいる")).toContain("読む");
+    expect(forms("読んでる")).toContain("読む");
+  });
+
+  it("chains polite past onto ている", () => {
+    const result = deinflect("食べていました").find((r) => r.word === "食べる");
+    expect(result?.reasons).toEqual([
+      "te-form",
+      "progressive",
+      "polite",
+      "past",
+    ]);
+  });
+
+  it("keeps a real verb ending in てる as written first", () => {
+    expect(deinflect("捨てる")[0]?.word).toBe("捨てる");
+  });
 });
 
 describe("fitsType", () => {

@@ -1,3 +1,4 @@
 dist
+dist-prod
 .next
 package-lock.json

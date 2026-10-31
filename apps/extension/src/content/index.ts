@@ -1,4 +1,4 @@
-import type { DictionaryEntry } from "../dictionary/types";
+import type { WordMatch } from "../dictionary/types";
 import type { AddCardMessage, AddCardResult, LookupMessage } from "../messages";
 import { getSettings, onSettingsChanged, type Trigger } from "../settings";
 import { getTextAtPoint } from "./getTextAtPoint";
@@ -7,12 +7,12 @@ import { getShownEntries, hidePopup, setPopupStatus, showPopup } from "./popup";
 // Sets how long the cursor must rest on a word in hover mode.
 const HOVER_DELAY = 150;
 
-// Sets the footer text for each way saving can end.
-const SAVE_RESULTS: Record<AddCardResult, string> = {
-  added: "Saved ✓",
-  exists: "Already saved",
-  loggedOut: "Log in from the YomiPop menu",
-  error: "Couldn't save (is the API running?)",
+// Builds the footer text for each way saving a word can end.
+const SAVE_RESULTS: Record<AddCardResult, (word: string) => string> = {
+  added: (word) => `Saved ${word} ✓`,
+  exists: (word) => `${word} is already saved`,
+  loggedOut: () => "Log in from the YomiPop menu",
+  error: () => "Couldn't save (is the API running?)",
 };
 
 let trigger: Trigger = "shift";
@@ -32,10 +32,10 @@ async function lookUp(x: number, y: number): Promise<void> {
   }
 
   const message: LookupMessage = { type: "lookup", text };
-  const entries: DictionaryEntry[] = await chrome.runtime.sendMessage(message);
+  const matches: WordMatch[] = await chrome.runtime.sendMessage(message);
   if (lookup !== latestLookup) return;
 
-  if (entries.length > 0) showPopup(entries, x, y);
+  if (matches.length > 0) showPopup(matches, x, y);
   else hidePopup();
 }
 
@@ -71,22 +71,32 @@ function isTyping(target: EventTarget | null): boolean {
   );
 }
 
-// Saves the top entry in the pop-up and shows how it went.
-async function saveShownEntry(): Promise<void> {
-  const entry = getShownEntries()[0];
+// Saves the entry at that spot in the pop-up and shows how it went.
+async function saveShownEntry(index: number): Promise<void> {
+  const entry = getShownEntries()[index];
   if (!entry) return;
 
-  setPopupStatus("Saving…");
+  const word = entry.kanji[0] ?? entry.readings[0] ?? "";
+  setPopupStatus(`Saving ${word}…`);
   const message: AddCardMessage = { type: "addCard", entry };
   const result: AddCardResult = await chrome.runtime.sendMessage(message);
-  setPopupStatus(SAVE_RESULTS[result]);
+  setPopupStatus(SAVE_RESULTS[result](word));
 }
 
-// Closes the pop-up on Escape and saves the top entry on A.
+// Picks which entry a key press saves: A for the top one, 1–3 for that one.
+// Digits are read by key position, so they still work while Shift is held.
+function entryIndexForKey(event: KeyboardEvent): number | null {
+  if (event.key.toLowerCase() === "a") return 0;
+  const digit = /^(?:Digit|Numpad)([1-9])$/.exec(event.code);
+  return digit ? Number(digit[1]) - 1 : null;
+}
+
+// Closes the pop-up on Escape and saves an entry on A or 1–3.
 document.addEventListener("keydown", (event) => {
   if (isOrphaned()) return;
   if (event.key === "Escape") hidePopup();
-  if (event.key.toLowerCase() === "a" && !isTyping(event.target)) {
-    saveShownEntry();
-  }
+  if (isTyping(event.target)) return;
+
+  const index = entryIndexForKey(event);
+  if (index !== null) saveShownEntry(index);
 });

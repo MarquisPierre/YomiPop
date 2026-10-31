@@ -1,4 +1,4 @@
-import type { DictionaryEntry } from "../dictionary/types";
+import type { DictionaryEntry, WordMatch } from "../dictionary/types";
 
 // Sets the gap between the cursor and the pop-up.
 const CURSOR_OFFSET = 12;
@@ -20,15 +20,14 @@ const STYLES = `
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     pointer-events: none;
   }
+  .number { margin-right: 8px; color: #9fb3c8; font-size: 12px; }
   .word { font-size: 22px; font-weight: 600; }
+  .reasons { font-size: 12px; color: #9fb3c8; }
   .reading { margin-left: 8px; color: #9fb3c8; }
   .meanings { margin: 6px 0 0; padding-left: 18px; }
   .entry + .entry { margin-top: 10px; padding-top: 10px; border-top: 1px solid #3a4048; }
   .status { margin-top: 8px; padding-top: 6px; border-top: 1px solid #3a4048; font-size: 12px; color: #9fb3c8; }
 `;
-
-// Sets the footer text shown before anything is saved.
-const SAVE_HINT = "A to save";
 
 let popup: HTMLDivElement | null = null;
 let status: HTMLDivElement | null = null;
@@ -52,20 +51,24 @@ function createPopup(): HTMLDivElement {
   return element;
 }
 
-// Shows the entries next to the given point.
-export function showPopup(
-  entries: DictionaryEntry[],
-  x: number,
-  y: number,
-): void {
+// Shows the matches next to the given point.
+export function showPopup(matches: WordMatch[], x: number, y: number): void {
   popup ??= createPopup();
-  shownEntries = entries.slice(0, MAX_ENTRIES);
+  const shown = matches.slice(0, MAX_ENTRIES);
+  shownEntries = shown.map((match) => match.entry);
 
   status = document.createElement("div");
   status.className = "status";
-  status.textContent = SAVE_HINT;
+  status.textContent =
+    shown.length > 1 ? `A or 1–${shown.length} to save` : "A to save";
 
-  popup.replaceChildren(...shownEntries.map(renderEntry), status);
+  const numbered = shown.length > 1;
+  popup.replaceChildren(
+    ...shown.map((match, index) =>
+      renderMatch(match, numbered ? index + 1 : null),
+    ),
+    status,
+  );
   popup.hidden = false;
   positionPopup(popup, x, y);
 }
@@ -80,8 +83,21 @@ export function getShownEntries(): DictionaryEntry[] {
   return popup && !popup.hidden ? shownEntries : [];
 }
 
-// Builds the word, reading and meanings for one entry.
-function renderEntry(entry: DictionaryEntry): HTMLDivElement {
+// Builds the number, word, reading, conjugations and meanings for one match.
+function renderMatch(
+  { entry, reasons }: WordMatch,
+  number: number | null,
+): HTMLDivElement {
+  const element = document.createElement("div");
+  element.className = "entry";
+
+  if (number !== null) {
+    const label = document.createElement("span");
+    label.className = "number";
+    label.textContent = String(number);
+    element.append(label);
+  }
+
   const word = document.createElement("span");
   word.className = "word";
   word.lang = "ja";
@@ -92,6 +108,15 @@ function renderEntry(entry: DictionaryEntry): HTMLDivElement {
   reading.lang = "ja";
   reading.textContent = entry.kanji.length > 0 ? (entry.readings[0] ?? "") : "";
 
+  element.append(word, reading);
+
+  if (reasons.length > 0) {
+    const conjugations = document.createElement("div");
+    conjugations.className = "reasons";
+    conjugations.textContent = reasons.join(" · ");
+    element.append(conjugations);
+  }
+
   const meanings = document.createElement("ol");
   meanings.className = "meanings";
   for (const sense of entry.senses) {
@@ -100,9 +125,7 @@ function renderEntry(entry: DictionaryEntry): HTMLDivElement {
     meanings.append(item);
   }
 
-  const element = document.createElement("div");
-  element.className = "entry";
-  element.append(word, reading, meanings);
+  element.append(meanings);
   return element;
 }
 
