@@ -1,25 +1,23 @@
-import nodemailer from "nodemailer";
+const { EMAIL_SCRIPT_URL, EMAIL_SCRIPT_SECRET } = process.env;
 
-const { GMAIL_USER, GMAIL_APP_PASSWORD } = process.env;
-
-// Sends through Gmail when its settings are present.
-const gmail =
-  GMAIL_USER && GMAIL_APP_PASSWORD
-    ? nodemailer.createTransport({
-        service: "gmail",
-        auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
-      })
-    : null;
-
-// Sends an email, or prints it to the log when Gmail isn't set up.
+// Sends an email through the Google Apps Script, or prints it to the log when the script isn't set up.
+// Goes through the script because Render's free plan blocks direct connections to Gmail.
 export async function sendEmail(
   to: string,
   subject: string,
   text: string,
 ): Promise<void> {
-  if (!gmail) {
+  if (!EMAIL_SCRIPT_URL || !EMAIL_SCRIPT_SECRET) {
     console.log(`Email to ${to}: ${subject}\n${text}`);
     return;
   }
-  await gmail.sendMail({ from: `YomiPop <${GMAIL_USER}>`, to, subject, text });
+
+  const response = await fetch(EMAIL_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ secret: EMAIL_SCRIPT_SECRET, to, subject, text }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  const result = await response.text();
+  if (result !== "sent") throw new Error(`Email script said: ${result}`);
 }
