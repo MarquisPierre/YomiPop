@@ -10,7 +10,19 @@ const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   // Keeps new accounts from signing in until they click the link in their email.
-  emailAndPassword: { enabled: true, requireEmailVerification: true },
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+    // Signs out every device after a reset, in case someone else got in.
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sendEmail(
+        user.email,
+        "Reset your YomiPop password",
+        `Hi ${user.name},\n\nClick this link to choose a new password. It works for 1 hour:\n${url}\n\nIf you didn't ask for this, you can ignore this email.`,
+      );
+    },
+  },
   emailVerification: {
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
