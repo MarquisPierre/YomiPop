@@ -34,7 +34,7 @@ function godanRules([u, a, i, e, o, te, ta]: GodanRow): Rule[] {
       fromType: "adj-i",
     },
     { name: "past", from: ta, to: u, toType: "v5" },
-    { name: "te-form", from: te, to: u, toType: "v5" },
+    { name: "te-form", from: te, to: u, toType: "v5", fromType: "te" },
     { name: "polite", from: i + "ます", to: u, toType: "v5", fromType: "masu" },
     { name: "want", from: i + "たい", to: u, toType: "v5", fromType: "adj-i" },
     { name: "potential", from: e + "る", to: u, toType: "v5", fromType: "v1" },
@@ -57,13 +57,13 @@ export const RULES: Rule[] = [
   ...GODAN_ROWS.flatMap(godanRules),
 
   // Covers 行く, whose te and past forms are irregular.
-  { name: "te-form", from: "って", to: "く", toType: "v5" },
+  { name: "te-form", from: "って", to: "く", toType: "v5", fromType: "te" },
   { name: "past", from: "った", to: "く", toType: "v5" },
 
   // Covers ichidan verbs like 食べる.
   { name: "negative", from: "ない", to: "る", toType: "v1", fromType: "adj-i" },
   { name: "past", from: "た", to: "る", toType: "v1" },
-  { name: "te-form", from: "て", to: "る", toType: "v1" },
+  { name: "te-form", from: "て", to: "る", toType: "v1", fromType: "te" },
   { name: "polite", from: "ます", to: "る", toType: "v1", fromType: "masu" },
   { name: "want", from: "たい", to: "る", toType: "v1", fromType: "adj-i" },
   {
@@ -87,7 +87,7 @@ export const RULES: Rule[] = [
     fromType: "adj-i",
   },
   { name: "past", from: "した", to: "する", toType: "vs-i" },
-  { name: "te-form", from: "して", to: "する", toType: "vs-i" },
+  { name: "te-form", from: "して", to: "する", toType: "vs-i", fromType: "te" },
   {
     name: "polite",
     from: "します",
@@ -137,7 +137,7 @@ export const RULES: Rule[] = [
     fromType: "adj-i",
   },
   { name: "past", from: "きた", to: "くる", toType: "vk" },
-  { name: "te-form", from: "きて", to: "くる", toType: "vk" },
+  { name: "te-form", from: "きて", to: "くる", toType: "vk", fromType: "te" },
   {
     name: "polite",
     from: "きます",
@@ -167,9 +167,27 @@ export const RULES: Rule[] = [
     toType: "adj-i",
     fromType: "adj-i",
   },
-  { name: "te-form", from: "くて", to: "い", toType: "adj-i" },
+  { name: "te-form", from: "くて", to: "い", toType: "adj-i", fromType: "te" },
   { name: "adverb", from: "く", to: "い", toType: "adj-i" },
   { name: "conditional", from: "ければ", to: "い", toType: "adj-i" },
+
+  // Covers ている and its short form てる, which conjugate like ichidan verbs.
+  {
+    name: "progressive",
+    from: "ている",
+    to: "て",
+    toType: "te",
+    fromType: "v1",
+  },
+  { name: "progressive", from: "てる", to: "て", toType: "te", fromType: "v1" },
+  {
+    name: "progressive",
+    from: "でいる",
+    to: "で",
+    toType: "te",
+    fromType: "v1",
+  },
+  { name: "progressive", from: "でる", to: "で", toType: "te", fromType: "v1" },
 
   // Covers the ます forms, which then go through the polite rules above.
   { name: "past", from: "ました", to: "ます", toType: "masu" },

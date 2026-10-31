@@ -1,8 +1,9 @@
 import type { DictionaryEntry } from "./types";
 import { RULES } from "./rules";
 
-// Lists the word types a conjugation can lead to. All but "masu" are JMdict codes.
-export type WordType = "v1" | "v5" | "vk" | "vs-i" | "vs" | "adj-i" | "masu";
+// Lists the word types a conjugation can lead to. All but "masu" and "te" are JMdict codes.
+export type WordType =
+  "v1" | "v5" | "vk" | "vs-i" | "vs" | "adj-i" | "masu" | "te";
 
 // Describes one way to undo a conjugation.
 export interface Rule {
