@@ -4,10 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { authClient } from "@/lib/authClient";
-
-// Styles the text boxes in the form.
-const INPUT_CLASS =
-  "rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700";
+import { BUTTON_CLASS, INPUT_CLASS } from "./formStyles";
+import { PasswordInput } from "./PasswordInput";
 
 // Names the browser storage slot that holds the remembered email.
 const EMAIL_KEY = "yomipop.rememberedEmail";
@@ -29,48 +27,6 @@ function saveRememberedEmail(email: string | null): void {
   } catch {
     // Storage is blocked, so there's nothing to remember with.
   }
-}
-
-// Draws an open eye, for showing the password.
-function EyeIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-// Draws a crossed-out eye, for hiding the password.
-function EyeOffIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-2.4 3.4" />
-      <path d="M6.6 6.6A17.4 17.4 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6" />
-      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-      <path d="M2 2l20 20" />
-    </svg>
-  );
 }
 
 // Draws Google's "G" logo in its four colours.
@@ -102,7 +58,6 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const emailInput = useRef<HTMLInputElement>(null);
@@ -244,25 +199,17 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         required
         className={INPUT_CLASS}
       />
-      <div className="relative flex">
-        <input
-          name="password"
-          type={showPassword ? "text" : "password"}
-          placeholder="Password"
-          autoComplete={signingUp ? "new-password" : "current-password"}
-          minLength={8}
-          required
-          className={`${INPUT_CLASS} flex-1 pr-10`}
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          aria-label={showPassword ? "Hide password" : "Show password"}
-          className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+      <PasswordInput
+        autoComplete={signingUp ? "new-password" : "current-password"}
+      />
+      {!signingUp && (
+        <Link
+          href="/forgot-password"
+          className="-mt-1 self-end text-sm text-zinc-500 underline"
         >
-          {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-        </button>
-      </div>
+          Forgot password?
+        </Link>
+      )}
 
       {!signingUp && (
         <label className="flex items-center gap-2 text-sm">
@@ -283,11 +230,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         </button>
       )}
 
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded-lg bg-zinc-900 py-2 text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-      >
+      <button type="submit" disabled={busy} className={BUTTON_CLASS}>
         {signingUp ? "Sign up" : "Sign in"}
       </button>
 
