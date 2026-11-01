@@ -2,6 +2,7 @@ import { WEB_URL } from "../config";
 import type { DictionaryEntry } from "../dictionary/types";
 import type { AddCardResult } from "../messages";
 import { getSessionToken } from "../session";
+import { forgetSavedEntries, markSaved } from "./savedEntries";
 
 // Saves the entry as a flashcard through the API, as the logged-in user.
 export async function addCard(entry: DictionaryEntry): Promise<AddCardResult> {
@@ -24,7 +25,11 @@ export async function addCard(entry: DictionaryEntry): Promise<AddCardResult> {
       },
       body: JSON.stringify(card),
     });
-    if (response.status === 401) return "loggedOut";
+    if (response.status === 401) {
+      await forgetSavedEntries();
+      return "loggedOut";
+    }
+    if (response.status === 409 || response.ok) await markSaved(entry.id);
     if (response.status === 409) return "exists";
     return response.ok ? "added" : "error";
   } catch {

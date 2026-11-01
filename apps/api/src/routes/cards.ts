@@ -78,6 +78,15 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // Lists the dictionary entries the user has saved, so the extension can mark them.
+  app.get("/cards/saved-entries", async (request) => {
+    const cards = await prisma.card.findMany({
+      where: { userId: request.userId, entryId: { not: null } },
+      select: { entryId: true },
+    });
+    return cards.map((card) => card.entryId);
+  });
+
   // Saves a new card, unless the user already saved its dictionary entry.
   app.post<{ Body: NewCard }>(
     "/cards",
