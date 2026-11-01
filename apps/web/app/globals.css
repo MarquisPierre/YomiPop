@@ -1,28 +1,156 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 /* Makes Tailwind's dark: classes follow the site's theme switch instead of only the computer's setting. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* Turns the colour variables below into Tailwind classes, like bg-card or text-hanko. */
 @theme inline {
+  --font-sans: var(--font-noto-sans-jp), system-ui, sans-serif;
+  --font-display: var(--font-rounded), var(--font-noto-sans-jp), sans-serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* The hanko red's soft background and its readable text colour, for chips and highlights. */
+  --color-hanko-soft: var(--hanko-soft);
+  --color-hanko-text: var(--hanko-text);
+  /* The cards peeking out behind the review card. */
+  --color-stack-1: var(--stack-1);
+  --color-stack-2: var(--stack-2);
+  /* The four answer buttons, each a soft background with readable text. */
+  --color-again: var(--again);
+  --color-again-foreground: var(--again-foreground);
+  --color-hard: var(--hard);
+  --color-hard-foreground: var(--hard-foreground);
+  --color-good: var(--good);
+  --color-good-foreground: var(--good-foreground);
+  --color-easy: var(--easy);
+  --color-easy-foreground: var(--easy-foreground);
+
+  /* Lifts cards off the page; the lifted one is for hover. */
+  --shadow-float: var(--float);
+  --shadow-float-lifted: var(--float-lifted);
+
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.5);
 }
 
-/* Uses the dark colours when the theme is dark. */
+/* Washi paper, ink and a hanko red: the light theme. */
+:root {
+  --radius: 1rem;
+  --background: #faf6ef;
+  --foreground: #2a2420;
+  --card: #fffdf8;
+  --card-foreground: #2a2420;
+  --popover: #fffdf8;
+  --popover-foreground: #2a2420;
+  --primary: #c8352a;
+  --primary-foreground: #fffdf8;
+  --secondary: #f5ede0;
+  --secondary-foreground: #2a2420;
+  --muted: #f5ede0;
+  --muted-foreground: #6b6055;
+  --accent: #f5ede0;
+  --accent-foreground: #2a2420;
+  --destructive: #b42318;
+  --border: #e6dccb;
+  --input: #e6dccb;
+  --ring: #c8352a;
+  --hanko-soft: #f9e4df;
+  --hanko-text: #a12b21;
+  --stack-1: #f5ede0;
+  --stack-2: #ede3d2;
+  --again: #f9e4df;
+  --again-foreground: #9b2a20;
+  --hard: #f8ecd2;
+  --hard-foreground: #7a5000;
+  --good: #e3f0e1;
+  --good-foreground: #2c6328;
+  --easy: #e1ecf7;
+  --easy-foreground: #22568a;
+  --float: 0 1px 2px rgb(42 36 32 / 0.06), 0 12px 30px rgb(42 36 32 / 0.11);
+  --float-lifted:
+    0 1px 2px rgb(42 36 32 / 0.06), 0 22px 44px rgb(42 36 32 / 0.16);
+}
+
+/* Sumi ink and soft paper: the dark theme. */
 [data-theme="dark"] {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #17130f;
+  --foreground: #efe8dc;
+  --card: #231e19;
+  --card-foreground: #efe8dc;
+  --popover: #231e19;
+  --popover-foreground: #efe8dc;
+  --primary: #e5533f;
+  --primary-foreground: #17130f;
+  --secondary: #2c251f;
+  --secondary-foreground: #efe8dc;
+  --muted: #2c251f;
+  --muted-foreground: #ab9f8f;
+  --accent: #2c251f;
+  --accent-foreground: #efe8dc;
+  --destructive: #f2785f;
+  --border: #3a3229;
+  --input: #3a3229;
+  --ring: #e5533f;
+  --hanko-soft: #3d211b;
+  --hanko-text: #f29a8b;
+  --stack-1: #2b241e;
+  --stack-2: #241e19;
+  --again: #3d211b;
+  --again-foreground: #f29a8b;
+  --hard: #3a2f17;
+  --hard-foreground: #f0c56a;
+  --good: #1f2e1d;
+  --good-foreground: #9fd49a;
+  --easy: #182838;
+  --easy-foreground: #9cc5ef;
+  --float: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 34px rgb(0 0 0 / 0.5);
+  --float-lifted: 0 1px 2px rgb(0 0 0 / 0.4), 0 24px 48px rgb(0 0 0 / 0.6);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background font-sans text-foreground;
+  }
+}
+
+/* Turns the review card over when the answer shows. People who ask their system for
+   less motion get no flip, as the build plan's accessibility section asks. */
+@keyframes card-flip {
+  from {
+    transform: perspective(1200px) rotateY(-80deg);
+    opacity: 0.4;
+  }
+  to {
+    transform: perspective(1200px) rotateY(0);
+    opacity: 1;
+  }
+}
+@utility animate-flip {
+  animation: card-flip 0.35s ease-out;
 }

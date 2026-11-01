@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ImageIcon, Pencil } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { updateCard, type Card } from "@/lib/api";
 import { CardImage } from "../review/CardImage";
 import { Sentence } from "../review/Sentence";
 import { SpeakButton } from "../review/speak";
 import { PicturePicker } from "./PicturePicker";
 
-// Styles the buttons at the bottom of the preview.
-const BUTTON_CLASS =
-  "rounded-md px-3 py-1 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-current dark:hover:bg-zinc-900";
-
-// Shows a card the way it looks after revealing it in review, on top of the page.
+// Shows a card the way it looks after revealing it in review, floating over the page.
+// The dialog keeps keyboard focus inside it, and Escape or a click outside closes it.
 // The Cards page works out the deck name and due time, since it already has them.
 export function CardPreview({
   card,
@@ -32,95 +37,81 @@ export function CardPreview({
   // Says whether the picture picker is open.
   const [choosingPicture, setChoosingPicture] = useState(false);
 
-  // Closes the preview on Escape.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
   return (
-    // Dims the page behind the preview. Clicking the dimmed part closes it.
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    >
-      {/* Keeps clicks inside the preview from closing it. */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Preview of ${card.word}`}
-        onClick={(event) => event.stopPropagation()}
-        className="flex max-h-full w-full max-w-md flex-col items-center gap-4 overflow-y-auto rounded-2xl bg-white p-8 text-center dark:bg-zinc-950"
-      >
-        <p lang="ja" className="text-5xl font-semibold">
-          {card.word}
-        </p>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
+        <div className="flex flex-col items-center gap-4 pt-2 text-center">
+          <DialogTitle
+            lang="ja"
+            className="font-display text-6xl leading-none font-extrabold"
+          >
+            {card.word}
+          </DialogTitle>
 
-        {/* Shows the reading with a button that reads it aloud. */}
-        <p lang="ja" className="text-xl text-zinc-500">
-          {card.reading}
-          <span className="ml-2">
+          {/* Shows the reading with a button that reads it aloud. */}
+          <DialogDescription
+            lang="ja"
+            className="flex items-center gap-2 text-xl text-muted-foreground"
+          >
+            {card.reading}
             <SpeakButton
               text={card.reading || card.word}
               label="Read the word"
             />
-          </span>
-        </p>
+          </DialogDescription>
 
-        {card.image && <CardImage image={card.image} />}
+          {card.image && <CardImage image={card.image} />}
 
-        {/* Lets the user add or change the picture without leaving the preview. */}
-        {choosingPicture && (
-          <PicturePicker
-            card={card}
-            onPicked={async (image) => {
-              const updated = await updateCard(card.id, { image });
-              setChoosingPicture(false);
-              onChange(updated);
-            }}
-            onCancel={() => setChoosingPicture(false)}
-          />
-        )}
+          {/* Lets the user add or change the picture without leaving the preview. */}
+          {choosingPicture && (
+            <PicturePicker
+              card={card}
+              onPicked={async (image) => {
+                const updated = await updateCard(card.id, { image });
+                setChoosingPicture(false);
+                onChange(updated);
+              }}
+              onCancel={() => setChoosingPicture(false)}
+            />
+          )}
 
-        {/* Shows the sentence with the word in bold, and its translation. */}
-        {card.sentence && (
-          <Sentence
-            sentence={card.sentence}
-            word={card.word}
-            translation={card.translation}
-          />
-        )}
+          {/* Shows the sentence with the word in bold, and its translation. */}
+          {card.sentence && (
+            <Sentence
+              sentence={card.sentence}
+              word={card.word}
+              translation={card.translation}
+            />
+          )}
 
-        <ol className="list-decimal space-y-1 pl-6 text-left">
-          {card.meanings.map((meaning) => (
-            <li key={meaning}>{meaning}</li>
-          ))}
-        </ol>
+          <ol className="list-decimal space-y-1 pl-6 text-left">
+            {card.meanings.map((meaning) => (
+              <li key={meaning}>{meaning}</li>
+            ))}
+          </ol>
 
-        {/* Shows the card's deck, when it's due and how often it's been reviewed. */}
-        <div className="flex w-full flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800">
-          <span>
-            {deckName} · {due} · reviewed {card.reps}×
-          </span>
-          <span className="flex gap-1">
-            <button
-              onClick={() => setChoosingPicture(true)}
-              className={BUTTON_CLASS}
-            >
-              {card.image ? "Change picture" : "Add picture"}
-            </button>
-            <button onClick={onEdit} className={BUTTON_CLASS}>
-              Edit
-            </button>
-            <button onClick={onClose} className={BUTTON_CLASS}>
-              Close
-            </button>
-          </span>
+          {/* Shows the card's deck, when it's due and how often it's been reviewed. */}
+          <div className="flex w-full flex-wrap items-center justify-between gap-2 border-t pt-4 text-sm text-muted-foreground">
+            <span>
+              {deckName} · {due} · reviewed {card.reps}×
+            </span>
+            <span className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setChoosingPicture(true)}
+              >
+                <ImageIcon aria-hidden="true" />
+                {card.image ? "Change picture" : "Add picture"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onEdit}>
+                <Pencil aria-hidden="true" />
+                Edit
+              </Button>
+            </span>
+          </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

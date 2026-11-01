@@ -25,21 +25,28 @@ export function Sentence({
 
   return (
     <div>
-      <p lang="ja" className="text-lg">
-        {found ? (
-          <>
-            {sentence.slice(0, found[0])}
-            <strong>{sentence.slice(found[0], found[0] + found[1])}</strong>
-            {sentence.slice(found[0] + found[1])}
-          </>
-        ) : (
-          sentence
-        )}
-        <span className="ml-1">
-          <SpeakButton text={sentence} label="Read the sentence (S)" />
+      <p
+        lang="ja"
+        className="flex flex-wrap items-center justify-center gap-x-2 text-lg"
+      >
+        <span>
+          {found ? (
+            <>
+              {sentence.slice(0, found[0])}
+              <strong className="text-hanko-text">
+                {sentence.slice(found[0], found[0] + found[1])}
+              </strong>
+              {sentence.slice(found[0] + found[1])}
+            </>
+          ) : (
+            sentence
+          )}
         </span>
+        <SpeakButton text={sentence} label="Read the sentence (S)" />
       </p>
-      {translation && <p className="text-sm text-zinc-500">{translation}</p>}
+      {translation && (
+        <p className="mt-1 text-sm text-muted-foreground">{translation}</p>
+      )}
     </div>
   );
 }

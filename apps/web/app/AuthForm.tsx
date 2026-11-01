@@ -139,8 +139,10 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
 
   if (sentTo) {
     return (
-      <div className="flex w-full max-w-sm flex-col gap-3">
-        <h1 className="mb-2 text-3xl font-semibold">Check your email</h1>
+      <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border bg-card p-8 shadow-float">
+        <h1 className="mb-2 font-display text-3xl font-extrabold">
+          Check your email
+        </h1>
         <p>
           We sent a link to <strong>{sentTo}</strong>. Click it to verify your
           email and sign in.
@@ -149,7 +151,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           type="button"
           onClick={() => resendEmail(sentTo)}
           disabled={busy}
-          className="text-left text-sm text-zinc-500 underline disabled:opacity-50"
+          className="text-left text-sm text-muted-foreground underline disabled:opacity-50"
         >
           Didn&apos;t get it? Send it again
         </button>
@@ -160,9 +162,9 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex w-full max-w-sm flex-col gap-3"
+      className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border bg-card p-8 shadow-float"
     >
-      <h1 className="mb-2 text-3xl font-semibold">
+      <h1 className="mb-2 font-display text-3xl font-extrabold">
         {signingUp ? "Sign up" : "Sign in"}
       </h1>
 
@@ -170,16 +172,16 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         type="button"
         onClick={continueWithGoogle}
         disabled={busy}
-        className="flex items-center justify-center gap-2 rounded-lg border border-zinc-300 py-2 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+        className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full border border-input bg-card font-semibold transition-colors hover:bg-accent disabled:opacity-50"
       >
         <GoogleIcon />
         Continue with Google
       </button>
 
-      <div className="flex items-center gap-3 text-sm text-zinc-500">
-        <span className="h-px flex-1 bg-zinc-300 dark:bg-zinc-700" />
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
         or
-        <span className="h-px flex-1 bg-zinc-300 dark:bg-zinc-700" />
+        <span className="h-px flex-1 bg-border" />
       </div>
 
       {signingUp && (
@@ -205,7 +207,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       {!signingUp && (
         <Link
           href="/forgot-password"
-          className="-mt-1 self-end text-sm text-zinc-500 underline"
+          className="-mt-1 self-end text-sm text-muted-foreground underline"
         >
           Forgot password?
         </Link>
@@ -218,7 +220,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         </label>
       )}
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       {unverifiedEmail && (
         <button
           type="button"
@@ -234,7 +236,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         {signingUp ? "Sign up" : "Sign in"}
       </button>
 
-      <p className="text-center text-sm text-zinc-500">
+      <p className="text-center text-sm text-muted-foreground">
         {signingUp ? "Have an account? " : "New here? "}
         <Link href={signingUp ? "/sign-in" : "/sign-up"} className="underline">
           {signingUp ? "Sign in" : "Sign up"}

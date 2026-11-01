@@ -33,12 +33,12 @@ export function ReviewSettings() {
 
   // Waits for the settings, showing why if they couldn't load.
   if (!settings) {
-    return message && <p className="text-sm text-red-500">{message}</p>;
+    return message && <p className="text-sm text-destructive">{message}</p>;
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="font-semibold">Review</h2>
+    <section className="flex flex-col gap-3 rounded-2xl border bg-card p-6 shadow-float">
+      <h2 className="font-display text-lg font-bold">Review</h2>
       <form onSubmit={save} className="flex items-center gap-3">
         <label htmlFor="newCardsPerDay">New cards per day</label>
         <input
@@ -50,17 +50,17 @@ export function ReviewSettings() {
           step={1}
           required
           defaultValue={settings.newCardsPerDay}
-          className="w-24 rounded-lg border border-zinc-300 bg-transparent px-3 py-1 dark:border-zinc-700"
+          className="h-10 w-24 rounded-xl border border-input bg-card px-3 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
         <button
           type="submit"
-          className="rounded-lg border border-zinc-300 px-3 py-1 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+          className="h-10 cursor-pointer rounded-full bg-primary px-5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Save
         </button>
       </form>
-      {message && <p className="text-sm text-zinc-500">{message}</p>}
-      <p className="text-sm text-zinc-500">
+      {message && <p className="text-sm text-muted-foreground">{message}</p>}
+      <p className="text-sm text-muted-foreground">
         Cards you&apos;ve already started always show when due. 0 means no new
         cards today.
       </p>

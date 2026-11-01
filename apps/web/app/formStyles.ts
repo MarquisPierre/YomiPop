@@ -1,7 +1,7 @@
-// Styles the text boxes in forms.
+// Styles the text boxes in forms, matching the theme's inputs.
 export const INPUT_CLASS =
-  "rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700";
+  "h-11 rounded-xl border border-input bg-card px-4 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
-// Styles the main button in forms.
+// Styles the main button in forms: a red pill.
 export const BUTTON_CLASS =
-  "rounded-lg bg-zinc-900 py-2 text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300";
+  "h-11 cursor-pointer rounded-full bg-primary font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50";

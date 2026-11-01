@@ -11,9 +11,9 @@ export function CardImage({
       <img
         src={image.url}
         alt=""
-        className="max-h-48 w-auto rounded-lg object-cover"
+        className="max-h-48 w-auto rounded-xl border object-cover"
       />
-      <figcaption className="text-xs text-zinc-500">
+      <figcaption className="text-xs text-muted-foreground">
         {image.attribution}
       </figcaption>
     </figure>

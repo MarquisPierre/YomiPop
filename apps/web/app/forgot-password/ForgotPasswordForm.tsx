@@ -31,12 +31,17 @@ export function ForgotPasswordForm() {
   // Says the same thing whether or not the email has an account, so the form can't reveal who signed up.
   if (sent) {
     return (
-      <div className="flex w-full max-w-sm flex-col gap-3">
-        <h1 className="mb-2 text-3xl font-semibold">Check your email</h1>
+      <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border bg-card p-8 shadow-float">
+        <h1 className="mb-2 font-display text-3xl font-extrabold">
+          Check your email
+        </h1>
         <p>
           If that email has an account, we sent it a link to reset the password.
         </p>
-        <Link href="/sign-in" className="text-sm text-zinc-500 underline">
+        <Link
+          href="/sign-in"
+          className="text-sm text-muted-foreground underline"
+        >
           Back to sign in
         </Link>
       </div>
@@ -46,10 +51,12 @@ export function ForgotPasswordForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex w-full max-w-sm flex-col gap-3"
+      className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border bg-card p-8 shadow-float"
     >
-      <h1 className="mb-2 text-3xl font-semibold">Forgot password</h1>
-      <p className="text-sm text-zinc-500">
+      <h1 className="mb-2 font-display text-3xl font-extrabold">
+        Forgot password
+      </h1>
+      <p className="text-sm text-muted-foreground">
         Enter your email and we&apos;ll send you a link to choose a new
         password.
       </p>
@@ -61,13 +68,13 @@ export function ForgotPasswordForm() {
         required
         className={INPUT_CLASS}
       />
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <button type="submit" disabled={busy} className={BUTTON_CLASS}>
         Send reset link
       </button>
       <Link
         href="/sign-in"
-        className="text-center text-sm text-zinc-500 underline"
+        className="text-center text-sm text-muted-foreground underline"
       >
         Back to sign in
       </Link>
