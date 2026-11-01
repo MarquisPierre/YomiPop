@@ -3,7 +3,13 @@ import { expect, test, type Page } from "@playwright/test";
 import { saveCard, signUpAndSignIn } from "./helpers";
 
 // Lists the pages to check, before and after signing in.
-const SIGNED_OUT_PAGES = ["/", "/sign-in", "/sign-up", "/forgot-password"];
+const SIGNED_OUT_PAGES = [
+  "/",
+  "/sign-in",
+  "/sign-up",
+  "/forgot-password",
+  "/privacy",
+];
 const SIGNED_IN_PAGES = ["/decks", "/cards", "/review", "/account"];
 
 // Checks one page and fails on any serious or critical accessibility problem, naming each one.

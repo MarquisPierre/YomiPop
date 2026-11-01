@@ -3,6 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { bearer } from "better-auth/plugins/bearer";
 import { prisma } from "./db.js";
 import { sendEmail } from "./email.js";
+import { deleteUserFiles } from "./services/storage.js";
 
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
 const WEB_URL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
@@ -54,7 +55,20 @@ export const auth = betterAuth({
         }
       : {},
   // Lets users delete their account, which also deletes their cards and reviews.
-  user: { deleteUser: { enabled: true } },
+  user: {
+    deleteUser: {
+      enabled: true,
+      // Removes their uploaded pictures too, which the database can't cascade to.
+      // Logs a failure instead of throwing, since the account is already gone by then.
+      afterDelete: async (user) => {
+        for (const bucket of ["avatars", "card-images"]) {
+          await deleteUserFiles(bucket, user.id).catch((error) =>
+            console.error(`Couldn't delete ${bucket} for ${user.id}`, error),
+          );
+        }
+      },
+    },
+  },
   // Logs a Google user into the existing account with the same email, since Google has checked it.
   account: { accountLinking: { trustedProviders: ["google"] } },
   trustedOrigins: [process.env.WEB_ORIGIN ?? "http://localhost:3000"],
