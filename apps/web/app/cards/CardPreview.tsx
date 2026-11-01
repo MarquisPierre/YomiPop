@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Card } from "@/lib/api";
+import { CardImage } from "../review/CardImage";
 import { Sentence } from "../review/Sentence";
 import { SpeakButton } from "../review/speak";
+import { PicturePicker } from "./PicturePicker";
 
 // Styles the buttons at the bottom of the preview.
 const BUTTON_CLASS =
@@ -17,13 +19,19 @@ export function CardPreview({
   due,
   onEdit,
   onClose,
+  onChange,
 }: {
   card: Card;
   deckName: string;
   due: string;
   onEdit: () => void;
   onClose: () => void;
+  // Passes on the card after its picture changes, so the page can show it.
+  onChange: (updated: Card) => void;
 }) {
+  // Says whether the picture picker is open.
+  const [choosingPicture, setChoosingPicture] = useState(false);
+
   // Closes the preview on Escape.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -62,6 +70,20 @@ export function CardPreview({
           </span>
         </p>
 
+        {card.image && <CardImage image={card.image} />}
+
+        {/* Lets the user add or change the picture without leaving the preview. */}
+        {choosingPicture && (
+          <PicturePicker
+            card={card}
+            onPicked={(updated) => {
+              setChoosingPicture(false);
+              onChange(updated);
+            }}
+            onCancel={() => setChoosingPicture(false)}
+          />
+        )}
+
         {/* Shows the sentence with the word in bold, and its translation. */}
         {card.sentence && (
           <Sentence
@@ -83,6 +105,12 @@ export function CardPreview({
             {deckName} · {due} · reviewed {card.reps}×
           </span>
           <span className="flex gap-1">
+            <button
+              onClick={() => setChoosingPicture(true)}
+              className={BUTTON_CLASS}
+            >
+              {card.image ? "Change picture" : "Add picture"}
+            </button>
             <button onClick={onEdit} className={BUTTON_CLASS}>
               Edit
             </button>

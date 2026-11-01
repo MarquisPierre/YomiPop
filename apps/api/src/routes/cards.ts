@@ -47,6 +47,31 @@ const CARD_IMAGE = {
   image: { select: { url: true, attribution: true } },
 } as const;
 
+// Checks a picture chosen for a card. Only Unsplash pictures are accepted.
+const imageSchema = {
+  type: "object",
+  required: ["url", "attribution"],
+  additionalProperties: false,
+  properties: {
+    // Only accepts Unsplash pictures, the one image source the app uses.
+    // Unsplash image links are long, so this allows up to 1000 characters.
+    url: {
+      type: "string",
+      maxLength: 1000,
+      pattern: "^https://images\\.unsplash\\.com/",
+    },
+    attribution: { type: "string", maxLength: 200 },
+    width: { type: "integer" },
+    height: { type: "integer" },
+    // Only accepts Unsplash's own "photo was picked" address.
+    downloadLocation: {
+      type: "string",
+      maxLength: 500,
+      pattern: "^https://api\\.unsplash\\.com/",
+    },
+  },
+} as const;
+
 // Checks new cards before they're saved.
 const newCardSchema = {
   type: "object",
@@ -60,29 +85,7 @@ const newCardSchema = {
     sentence: { type: ["string", "null"], maxLength: 300 },
     translation: { type: ["string", "null"], maxLength: 500 },
     deckId: { type: "string" },
-    image: {
-      type: "object",
-      required: ["url", "attribution"],
-      additionalProperties: false,
-      properties: {
-        // Only accepts Unsplash pictures, the one image source the app uses.
-        // Unsplash image links are long, so this allows up to 1000 characters.
-        url: {
-          type: "string",
-          maxLength: 1000,
-          pattern: "^https://images\\.unsplash\\.com/",
-        },
-        attribution: { type: "string", maxLength: 200 },
-        width: { type: "integer" },
-        height: { type: "integer" },
-        // Only accepts Unsplash's own "photo was picked" address.
-        downloadLocation: {
-          type: "string",
-          maxLength: 500,
-          pattern: "^https://api\\.unsplash\\.com/",
-        },
-      },
-    },
+    image: imageSchema,
   },
 } as const;
 
@@ -94,9 +97,10 @@ type CardChanges = Partial<
   >
 > & {
   imageId?: null;
+  image?: NewImage;
 };
 
-// Checks card edits. The word, reading, meanings, sentence, translation and deck can change, never the schedule.
+// Checks card edits. The word, reading, meanings, sentence, translation, deck and picture can change, never the schedule.
 const cardChangesSchema = {
   type: "object",
   additionalProperties: false,
@@ -110,6 +114,7 @@ const cardChangesSchema = {
     deckId: { type: "string" },
     // Removes the card's picture. Null is the only value allowed.
     imageId: { type: "null" },
+    image: imageSchema,
   },
 } as const;
 
@@ -222,7 +227,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // Changes a card's word, reading, meanings, sentence, translation or deck.
+  // Changes a card's word, reading, meanings, sentence, translation, deck or picture.
   app.patch<{ Params: { id: string }; Body: CardChanges }>(
     "/cards/:id",
     { schema: { body: cardChangesSchema } },
@@ -240,11 +245,30 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
       ) {
         return reply.code(400).send({ message: "Unknown deck" });
       }
-      return prisma.card.update({
-        where: { id: request.params.id },
-        data: request.body,
-        include: CARD_IMAGE,
+      // Saves a newly chosen picture, then points the card at it, together.
+      const { image, ...changes } = request.body;
+      const updated = await prisma.$transaction(async (tx) => {
+        const media = image
+          ? await tx.media.create({
+              data: {
+                url: image.url,
+                attribution: image.attribution,
+                width: image.width,
+                height: image.height,
+                userId,
+                source: "search",
+              },
+            })
+          : null;
+        return tx.card.update({
+          where: { id: request.params.id },
+          data: { ...changes, ...(media ? { imageId: media.id } : {}) },
+          include: CARD_IMAGE,
+        });
       });
+      // Tells Unsplash the photo was picked, without making the save wait.
+      if (image?.downloadLocation) void reportImageUse(image.downloadLocation);
+      return updated;
     },
   );
 
