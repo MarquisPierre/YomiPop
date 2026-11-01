@@ -51,6 +51,8 @@ const STYLES = `
   /* Fits the picture to the pop-up's width without making it too tall. */
   .photo { display: block; width: 100%; max-height: 160px; margin-top: 4px; border-radius: 4px; object-fit: cover; }
   .credit { color: #6e7781; font-size: 11px; }
+  /* Puts the speaker button beside the word in the builder. */
+  .word-row { display: flex; align-items: center; gap: 8px; }
   /* Shows the small ✨ Explain button next to selected Japanese text. */
   .explain-button { position: fixed; z-index: 2147483647; padding: 2px 8px; border: none; border-radius: 6px; background: #1f2328; color: #f0f3f6; font: 12px system-ui, sans-serif; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); cursor: pointer; }
   .translation { margin-top: 6px; }
@@ -97,8 +99,8 @@ export function showPopup(
   const where = deckName ? ` to ${deckName}` : "";
   status.textContent =
     shown.length > 1
-      ? `A or 1–${shown.length} to save${where} · P to pick`
-      : `A to save${where} · P to pick`;
+      ? `A or 1–${shown.length} to save${where} · P to pick · R listen`
+      : `A to save${where} · P to pick · R listen`;
 
   const numbered = shown.length > 1;
   popup.replaceChildren(
@@ -151,6 +153,8 @@ export interface BuilderActions {
   removeImage: () => void;
   save: () => void;
   cancel: () => void;
+  // Reads Japanese text aloud.
+  speak: (text: string) => void;
 }
 
 // Makes a small button for the builder, filled in when it's the chosen option.
@@ -184,7 +188,13 @@ export function showBuilder(view: BuilderView, actions: BuilderActions): void {
   // Shows the word and its meanings, each clickable or ticked with its number key.
   const element = document.createElement("div");
   element.className = "entry";
-  const word = line("word", entry.kanji[0] ?? entry.readings[0] ?? "", "ja");
+  // Shows the word with a speaker button that reads its reading, since kana is never misread.
+  const word = document.createElement("div");
+  word.className = "word-row";
+  word.append(
+    line("word", entry.kanji[0] ?? entry.readings[0] ?? "", "ja"),
+    chip("🔊", () => actions.speak(entry.readings[0] ?? entry.kanji[0] ?? "")),
+  );
   const list = document.createElement("ol");
   list.className = "picker";
   entry.senses.slice(0, MAX_PICKABLE).forEach((sense, i) => {
@@ -207,6 +217,11 @@ export function showBuilder(view: BuilderView, actions: BuilderActions): void {
   );
   if (ai && view.aiSentence) {
     sentence.append(chip("🔄 New one", actions.nextSentence));
+  }
+  // Reads whichever sentence is showing, when there is one.
+  const shownSentence = ai ? view.aiSentence?.japanese : view.pageSentence;
+  if (shownSentence && !view.sentenceNote) {
+    sentence.append(chip("🔊", () => actions.speak(shownSentence)));
   }
   if (view.sentenceNote) {
     sentence.append(line("note", view.sentenceNote));

@@ -2,7 +2,7 @@ import type { WordMatch } from "../dictionary/types";
 import type { Message } from "../messages";
 import { COOKIE_NAMES } from "../session";
 import { addCard } from "./addCard";
-import { askAi, askExplain } from "./askAi";
+import { askAi, askExplain, askSpeech } from "./askAi";
 import { BADGE_ALARM, startDueBadge, updateDueBadge } from "./dueBadge";
 import { findWord } from "./findWord";
 import { injectIntoOpenTabs } from "./injectIntoOpenTabs";
@@ -72,6 +72,10 @@ chrome.runtime.onMessage.addListener(
     }
     if (message.type === "explain") {
       askExplain(message.sentence).then(sendResponse);
+      return true;
+    }
+    if (message.type === "speech") {
+      askSpeech(message.text).then(sendResponse);
       return true;
     }
   },
