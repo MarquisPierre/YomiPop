@@ -13,6 +13,7 @@ apps/api/src/generated/
 .env
 .env.*
 !.env.example
+!.env.test.example
 # The extension's live address isn't secret, so it's committed.
 !apps/extension/.env.production
 

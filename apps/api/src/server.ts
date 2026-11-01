@@ -1,29 +1,7 @@
 import "dotenv/config";
-import Fastify from "fastify";
-import { aiRoutes } from "./routes/ai.js";
-import { authRoutes } from "./routes/auth.js";
-import { cardRoutes } from "./routes/cards.js";
-import { deckRoutes } from "./routes/decks.js";
-import { mediaRoutes } from "./routes/media.js";
-import { settingsRoutes } from "./routes/settings.js";
+import { buildApp } from "./app.js";
 
-// Rejects request bodies with unknown fields instead of quietly dropping them.
-const app = Fastify({
-  logger: true,
-  ajv: { customOptions: { removeAdditional: false } },
-});
-
-app.get("/health", async () => {
-  return { status: "ok" };
-});
-
-app.register(authRoutes);
-app.register(cardRoutes, { prefix: "/api" });
-app.register(settingsRoutes, { prefix: "/api" });
-app.register(deckRoutes, { prefix: "/api" });
-app.register(aiRoutes, { prefix: "/api" });
-app.register(mediaRoutes, { prefix: "/api" });
-
+const app = buildApp();
 const port = Number(process.env.PORT ?? 4000);
 
 try {
