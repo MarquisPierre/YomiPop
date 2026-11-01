@@ -5,9 +5,11 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   deleteCard,
   getCards,
+  getDecks,
   NotLoggedInError,
   updateCard,
   type Card,
+  type Deck,
 } from "@/lib/api";
 
 // Styles the text boxes used while editing.
@@ -47,11 +49,17 @@ export function CardList() {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [decks, setDecks] = useState<Deck[]>([]);
+  // Holds the deck being shown, or "all".
+  const [deckFilter, setDeckFilter] = useState("all");
 
-  // Loads the cards, or sends the user to sign in if they're logged out.
+  // Loads the cards and decks, or sends the user to sign in if they're logged out.
   useEffect(() => {
-    getCards()
-      .then(setCards)
+    Promise.all([getCards(), getDecks()])
+      .then(([cardList, deckList]) => {
+        setCards(cardList);
+        setDecks(deckList);
+      })
       .catch((error) =>
         error instanceof NotLoggedInError
           ? router.replace("/sign-in")
@@ -90,6 +98,7 @@ export function CardList() {
         meanings,
         sentence: String(form.get("sentence")).trim() || null,
         translation: String(form.get("translation")).trim() || null,
+        deckId: String(form.get("deckId")),
       });
       setCards(
         (current) =>
@@ -106,19 +115,42 @@ export function CardList() {
     return <p className="text-zinc-500">{error ?? "Loading…"}</p>;
   }
 
-  const shown = cards.filter((card) => matchesSearch(card, search));
+  // Shows the cards in the chosen deck that match the search.
+  const shown = cards.filter(
+    (card) =>
+      (deckFilter === "all" || card.deckId === deckFilter) &&
+      matchesSearch(card, search),
+  );
+  // Looks up a deck's name for showing on each card.
+  const deckName = (id: string) =>
+    decks.find((deck) => deck.id === id)?.name ?? "";
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Cards ({cards.length})</h1>
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search…"
-          className="w-56 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
-        />
+        <h1 className="text-2xl font-semibold">Cards ({shown.length})</h1>
+        <div className="flex gap-2">
+          <select
+            value={deckFilter}
+            onChange={(event) => setDeckFilter(event.target.value)}
+            aria-label="Deck"
+            className="rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+          >
+            <option value="all">All decks</option>
+            {decks.map((deck) => (
+              <option key={deck.id} value={deck.id}>
+                {deck.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search…"
+            className="w-56 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+          />
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
@@ -171,6 +203,20 @@ export function CardList() {
                   maxLength={500}
                   className={`${INPUT_CLASS} sm:col-span-3`}
                 />
+                <label className="flex items-center gap-2 text-sm text-zinc-500 sm:col-span-3">
+                  Deck
+                  <select
+                    name="deckId"
+                    defaultValue={card.deckId}
+                    className={INPUT_CLASS}
+                  >
+                    {decks.map((deck) => (
+                      <option key={deck.id} value={deck.id}>
+                        {deck.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <div className="flex gap-2 sm:col-span-3 sm:justify-end">
                   <button
                     type="button"
@@ -214,6 +260,11 @@ export function CardList() {
                   </span>
                 )}
               </span>
+              {deckFilter === "all" && (
+                <span className="w-24 shrink-0 truncate text-sm text-zinc-500">
+                  {deckName(card.deckId)}
+                </span>
+              )}
               <span className="w-20 shrink-0 text-sm text-zinc-500">
                 {describeDue(card.dueAt)}
               </span>

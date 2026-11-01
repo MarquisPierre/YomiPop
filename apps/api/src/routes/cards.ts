@@ -48,10 +48,13 @@ const newCardSchema = {
 
 // Describes the fields a card edit can change.
 type CardChanges = Partial<
-  Pick<NewCard, "word" | "reading" | "meanings" | "sentence" | "translation">
+  Pick<
+    NewCard,
+    "word" | "reading" | "meanings" | "sentence" | "translation" | "deckId"
+  >
 >;
 
-// Checks card edits. Only the word, reading, meanings, sentence and translation can change, never the schedule.
+// Checks card edits. The word, reading, meanings, sentence, translation and deck can change, never the schedule.
 const cardChangesSchema = {
   type: "object",
   additionalProperties: false,
@@ -62,6 +65,7 @@ const cardChangesSchema = {
     meanings: { type: "array", items: { type: "string" }, minItems: 1 },
     sentence: { type: ["string", "null"], maxLength: 300 },
     translation: { type: ["string", "null"], maxLength: 500 },
+    deckId: { type: "string" },
   },
 } as const;
 
@@ -147,14 +151,23 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // Changes a card's word, reading or meanings.
+  // Changes a card's word, reading, meanings, sentence, translation or deck.
   app.patch<{ Params: { id: string }; Body: CardChanges }>(
     "/cards/:id",
     { schema: { body: cardChangesSchema } },
     async (request, reply) => {
-      const where = { id: request.params.id, userId: request.userId };
+      const { userId } = request;
+      const where = { id: request.params.id, userId };
       if (!(await prisma.card.findFirst({ where }))) {
         return reply.code(404).send({ message: "Card not found" });
+      }
+      // Refuses a move to a deck that isn't the user's.
+      const { deckId } = request.body;
+      if (
+        deckId &&
+        !(await prisma.deck.findFirst({ where: { id: deckId, userId } }))
+      ) {
+        return reply.code(400).send({ message: "Unknown deck" });
       }
       return prisma.card.update({
         where: { id: request.params.id },

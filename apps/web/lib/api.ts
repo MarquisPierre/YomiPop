@@ -27,7 +27,10 @@ function checkResponse(response: Response): void {
 
 // Describes the parts of a card the user can edit.
 export type CardChanges = Partial<
-  Pick<Card, "word" | "reading" | "meanings" | "sentence" | "translation">
+  Pick<
+    Card,
+    "word" | "reading" | "meanings" | "sentence" | "translation" | "deckId"
+  >
 >;
 
 // Fetches all of the user's cards, newest first.
