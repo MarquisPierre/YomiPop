@@ -4,10 +4,18 @@ export type Trigger = "shift" | "hover";
 // Describes the user's saved settings.
 export interface Settings {
   trigger: Trigger;
+  // Picks the deck new words go to. Null means the account's Default deck.
+  deckId: string | null;
+  // Remembers that deck's name for the pop-up's footer.
+  deckName: string | null;
 }
 
 // Sets what a new install starts with.
-const DEFAULT_SETTINGS: Settings = { trigger: "shift" };
+const DEFAULT_SETTINGS: Settings = {
+  trigger: "shift",
+  deckId: null,
+  deckName: null,
+};
 
 // Reads the saved settings, filling in defaults.
 export async function getSettings(): Promise<Settings> {

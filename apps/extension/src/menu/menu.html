@@ -57,6 +57,19 @@
         margin: 10px 0 0;
         color: #f0f3f6;
       }
+      /* Puts the deck dropdown on its own line under its label. */
+      .deck {
+        margin-top: 10px;
+        color: #9fb3c8;
+      }
+      .deck select {
+        display: block;
+        width: 100%;
+        margin-top: 4px;
+        padding: 4px;
+        border-radius: 6px;
+        font: inherit;
+      }
       [hidden] {
         display: none;
       }
@@ -68,6 +81,10 @@
       <p id="account-status">Checking login…</p>
       <p id="review-status" class="review" hidden></p>
       <button id="start-review" hidden>Start review</button>
+      <label id="deck-picker" class="deck" hidden>
+        Add new words to
+        <select id="deck"></select>
+      </label>
       <button id="log-in" hidden>Log in</button>
       <button id="log-out" hidden>Log out</button>
     </div>

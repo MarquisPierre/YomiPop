@@ -18,4 +18,5 @@ export interface AddCardMessage {
 export type Message = LookupMessage | AddCardMessage;
 
 // Lists the ways saving a card can end.
-export type AddCardResult = "added" | "exists" | "loggedOut" | "error";
+export type AddCardResult =
+  "added" | "exists" | "loggedOut" | "noDeck" | "error";
