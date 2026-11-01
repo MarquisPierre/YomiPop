@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "description": "Hover Japanese words to see their reading and meaning.",
   "action": { "default_popup": "src/menu/menu.html" },
-  "permissions": ["storage", "scripting", "cookies"],
+  "permissions": ["storage", "scripting", "cookies", "alarms"],
   "host_permissions": ["http://localhost/*", "https://yomipop.vercel.app/*"],
   "background": {
     "service_worker": "src/background/index.ts",
