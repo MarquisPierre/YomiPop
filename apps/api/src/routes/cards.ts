@@ -57,6 +57,41 @@ const reviewSchema = {
   },
 } as const;
 
+// Checks the stats request, which needs the user's time zone to know when their day starts.
+const statsSchema = {
+  type: "object",
+  required: ["timeZone"],
+  properties: { timeZone: { type: "string", minLength: 1 } },
+} as const;
+
+// Checks whether the text is a real time zone, like "America/New_York".
+function isTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Returns the day before a "YYYY-MM-DD" date, in the same format.
+function dayBefore(day: string): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+}
+
+// Counts the days in a row with reviews, ending today, or yesterday if today has none yet.
+function countStreak(reviewDays: Set<string>, today: string): number {
+  let day = reviewDays.has(today) ? today : dayBefore(today);
+  let streak = 0;
+  while (reviewDays.has(day)) {
+    streak++;
+    day = dayBefore(day);
+  }
+  return streak;
+}
+
 // Adds the card routes to the server.
 export async function cardRoutes(app: FastifyInstance): Promise<void> {
   app.decorateRequest("userId", "");
@@ -147,6 +182,56 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
       orderBy: { dueAt: "asc" },
     });
   });
+
+  // Counts cards due now and later today, reviews today, and the review streak.
+  // Days are counted in the user's time zone, since the server runs on UTC.
+  app.get<{ Querystring: { timeZone: string } }>(
+    "/cards/stats",
+    { schema: { querystring: statsSchema } },
+    async (request, reply) => {
+      const { userId } = request;
+      const { timeZone } = request.query;
+      if (!isTimeZone(timeZone)) {
+        return reply.code(400).send({ message: "Unknown time zone" });
+      }
+
+      // Dates are stored in UTC without a zone, so they're tagged as UTC before converting.
+      // Counting always returns exactly one row.
+      const [counts] = await prisma.$queryRaw<
+        { today: string; dueNow: bigint; laterToday: bigint }[]
+      >`
+        SELECT
+          to_char(now() AT TIME ZONE ${timeZone}, 'YYYY-MM-DD') AS today,
+          count(*) FILTER (WHERE "dueAt" <= now() AT TIME ZONE 'UTC') AS "dueNow",
+          count(*) FILTER (
+            WHERE "dueAt" > now() AT TIME ZONE 'UTC'
+              AND "dueAt" < (((now() AT TIME ZONE ${timeZone})::date + 1)::timestamp AT TIME ZONE ${timeZone}) AT TIME ZONE 'UTC'
+          ) AS "laterToday"
+        FROM "Card"
+        WHERE "userId" = ${userId}
+      `;
+      const days = await prisma.$queryRaw<{ day: string; reviews: bigint }[]>`
+        SELECT
+          to_char("reviewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timeZone}, 'YYYY-MM-DD') AS day,
+          count(*) AS reviews
+        FROM "Review"
+        JOIN "Card" ON "Card".id = "Review"."cardId"
+        WHERE "Card"."userId" = ${userId}
+        GROUP BY day
+      `;
+
+      if (!counts) throw new Error("Stats query returned no row");
+      const today = counts.today;
+      return {
+        dueNow: Number(counts.dueNow),
+        laterToday: Number(counts.laterToday),
+        reviewedToday: Number(
+          days.find((row) => row.day === today)?.reviews ?? 0,
+        ),
+        streak: countStreak(new Set(days.map((row) => row.day)), today),
+      };
+    },
+  );
 
   // Records an answer and schedules the card's next review.
   app.post<{ Params: { id: string }; Body: { rating: Grade } }>(
