@@ -53,6 +53,14 @@ jobs:
       - name: Run the tests
         run: npm test
 
+      # Downloads JMdict and builds the extension's dictionary, which isn't in git
+      # because it's 37 MB. Only on main, where the store zip is made.
+      - name: Build the dictionary
+        if: github.ref == 'refs/heads/main'
+        run: npm run build:dict
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Building the website also type-checks it.
       - name: Build everything
         run: |
@@ -81,7 +89,10 @@ jobs:
       - name: Zip the extension for the Chrome Web Store
         if: github.ref == 'refs/heads/main'
         working-directory: apps/extension/dist-prod
-        run: zip -r ../yomipop-extension.zip .
+        run: |
+          # Fails instead of shipping an extension with no dictionary.
+          test -f dict/index.json
+          zip -r ../yomipop-extension.zip .
 
       # Keeps the zip on the run's page for 30 days, to download and upload to the store.
       - name: Save the store zip

@@ -28,8 +28,13 @@ const SEARCH_ONLY_TAGS = new Set(["sK", "sk"]);
 
 // Downloads the full English JMdict zip unless it's cached, and returns its path.
 async function downloadJmdict(): Promise<string> {
+  // Sends CI's token when there is one, since GitHub limits anonymous API calls.
+  const token = process.env.GITHUB_TOKEN;
   const response = await fetch(RELEASE_URL, {
-    headers: { "User-Agent": "yomipop-build" },
+    headers: {
+      "User-Agent": "yomipop-build",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
   });
   if (!response.ok) throw new Error(`GitHub API returned ${response.status}`);
 

@@ -70,6 +70,15 @@
         border-radius: 6px;
         font: inherit;
       }
+      /* Keeps the credit small and quiet under the settings. */
+      .credit {
+        margin: 12px 0 0;
+        font-size: 11px;
+        color: #9fb3c8;
+      }
+      .credit a {
+        color: inherit;
+      }
       [hidden] {
         display: none;
       }
@@ -96,6 +105,14 @@
       >
       <label><input type="radio" name="trigger" value="hover" /> Hover</label>
     </fieldset>
+    <!-- Credits the dictionary, as its licence requires. -->
+    <p class="credit">
+      Dictionary data from
+      <a href="https://www.edrdg.org/edrdg/licence.html" target="_blank"
+        >JMdict</a
+      >
+      by the EDRDG, under CC BY-SA 4.0.
+    </p>
     <script type="module" src="./menu.ts"></script>
   </body>
 </html>

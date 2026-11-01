@@ -44,10 +44,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Header />
         {children}
         {/* Links the privacy policy from every page, as the Chrome Web Store expects. */}
-        <footer className="px-4 py-6 text-center text-sm text-muted-foreground">
+        <footer className="flex flex-col gap-1 px-4 py-6 text-center text-sm text-muted-foreground">
           <Link href="/privacy" className="underline-offset-4 hover:underline">
             Privacy policy
           </Link>
+          {/* Credits the dictionary, as its licence requires. */}
+          <p>
+            Dictionary data from{" "}
+            <a
+              href="https://www.edrdg.org/edrdg/licence.html"
+              className="underline underline-offset-4"
+            >
+              JMdict
+            </a>{" "}
+            by the EDRDG, under CC BY-SA 4.0.
+          </p>
         </footer>
       </body>
     </html>
