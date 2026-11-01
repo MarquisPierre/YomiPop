@@ -4,7 +4,7 @@
 
 Read Japanese anywhere on the web, save the words you meet, and review them on cards that come back right before you forget.
 
-**Live:** https://yomipop.vercel.app · **Demo login:** [coming soon]
+**Live:** https://yomipop.vercel.app · **Demo login:** `marquispierre27+demo@gmail.com` / `demoguy123` (sample decks are ready to review; no extension needed)
 
 ![Hovering a Japanese word on NHK News, then building a card with an AI sentence and a picture and saving it](docs/demo.gif)
 
