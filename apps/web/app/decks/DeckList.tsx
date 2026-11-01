@@ -138,7 +138,12 @@ export function DeckList() {
               </form>
             ) : (
               <>
-                <span className="flex-1 font-medium">{deck.name}</span>
+                <Link
+                  href={`/cards?deck=${deck.id}`}
+                  className="flex-1 font-medium hover:underline"
+                >
+                  {deck.name}
+                </Link>
                 <span className="text-sm text-zinc-500">
                   {deck.due} due · {deck.new} new
                 </span>

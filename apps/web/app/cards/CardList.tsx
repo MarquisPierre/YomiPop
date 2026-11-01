@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   deleteCard,
@@ -11,6 +11,7 @@ import {
   type Card,
   type Deck,
 } from "@/lib/api";
+import { CardPreview } from "./CardPreview";
 
 // Styles the text boxes used while editing.
 const INPUT_CLASS =
@@ -51,7 +52,21 @@ export function CardList() {
   const [error, setError] = useState<string | null>(null);
   const [decks, setDecks] = useState<Deck[]>([]);
   // Holds the deck being shown, or "all".
-  const [deckFilter, setDeckFilter] = useState("all");
+  // Reads the deck to show from the address, e.g. /cards?deck=abc, or shows all.
+  const searchParams = useSearchParams();
+  const [deckFilter, setDeckFilter] = useState(
+    () => searchParams.get("deck") ?? "all",
+  );
+  // Holds the card being previewed, if any.
+  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  // Shows another deck and puts it in the address, so back and bookmarks work.
+  function chooseDeck(deck: string) {
+    setDeckFilter(deck);
+    router.replace(deck === "all" ? "/cards" : `/cards?deck=${deck}`, {
+      scroll: false,
+    });
+  }
 
   // Loads the cards and decks, or sends the user to sign in if they're logged out.
   useEffect(() => {
@@ -124,6 +139,8 @@ export function CardList() {
   // Looks up a deck's name for showing on each card.
   const deckName = (id: string) =>
     decks.find((deck) => deck.id === id)?.name ?? "";
+  // Finds the card being previewed. It's gone if it was deleted meanwhile.
+  const previewCard = cards.find((card) => card.id === previewId);
 
   return (
     <div className="flex flex-col gap-4">
@@ -132,7 +149,7 @@ export function CardList() {
         <div className="flex gap-2">
           <select
             value={deckFilter}
-            onChange={(event) => setDeckFilter(event.target.value)}
+            onChange={(event) => chooseDeck(event.target.value)}
             aria-label="Deck"
             className="rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
           >
@@ -235,7 +252,16 @@ export function CardList() {
               </form>
             </li>
           ) : (
-            <li key={card.id} className="flex items-center gap-4 py-3">
+            <li
+              key={card.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setPreviewId(card.id)}
+              onKeyDown={(event) =>
+                event.key === "Enter" && setPreviewId(card.id)
+              }
+              className="flex cursor-pointer items-center gap-4 rounded-md py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
+            >
               <span lang="ja" className="w-24 shrink-0 text-lg font-semibold">
                 {card.word}
               </span>
@@ -269,12 +295,23 @@ export function CardList() {
                 {describeDue(card.dueAt)}
               </span>
               <button
-                onClick={() => setEditingId(card.id)}
+                onClick={(event) => {
+                  // Keeps the click from also opening the preview.
+                  event.stopPropagation();
+                  setEditingId(card.id);
+                }}
                 className={BUTTON_CLASS}
               >
                 Edit
               </button>
-              <button onClick={() => remove(card)} className={BUTTON_CLASS}>
+              <button
+                onClick={(event) => {
+                  // Keeps the click from also opening the preview.
+                  event.stopPropagation();
+                  remove(card);
+                }}
+                className={BUTTON_CLASS}
+              >
                 Delete
               </button>
             </li>
@@ -284,6 +321,20 @@ export function CardList() {
 
       {cards.length > 0 && shown.length === 0 && (
         <p className="text-zinc-500">No cards match “{search}”.</p>
+      )}
+
+      {previewCard && (
+        <CardPreview
+          card={previewCard}
+          deckName={deckName(previewCard.deckId)}
+          due={describeDue(previewCard.dueAt)}
+          onEdit={() => {
+            // Swaps the preview for that card's edit form.
+            setPreviewId(null);
+            setEditingId(previewCard.id);
+          }}
+          onClose={() => setPreviewId(null)}
+        />
       )}
     </div>
   );
