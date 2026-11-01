@@ -21,18 +21,26 @@ const SAVE_RESULTS: Record<AddCardResult, (word: string) => string> = {
   added: (word) => `Saved ${word} ✓`,
   exists: (word) => `${word} is already saved`,
   loggedOut: () => "Log in from the YomiPop menu",
+  noDeck: () => "Pick a deck in the YomiPop menu",
   error: () => "Couldn't save (is the API running?)",
 };
 
 let trigger: Trigger = "shift";
+let deckName: string | null = null;
 let latestLookup = 0;
 let hoverTimer: number | undefined;
 let shownSentence = "";
 // Holds the open meaning picker: which entry it's for and which meanings are ticked.
 let picking: { index: number; chosen: Set<number> } | null = null;
 
-getSettings().then((settings) => (trigger = settings.trigger));
-onSettingsChanged((settings) => (trigger = settings.trigger));
+getSettings().then((settings) => {
+  trigger = settings.trigger;
+  deckName = settings.deckName;
+});
+onSettingsChanged((settings) => {
+  trigger = settings.trigger;
+  deckName = settings.deckName;
+});
 
 // Shows the pop-up for the word at the point, or hides it if there's none.
 async function lookUp(x: number, y: number): Promise<void> {
@@ -48,7 +56,7 @@ async function lookUp(x: number, y: number): Promise<void> {
   if (lookup !== latestLookup) return;
 
   if (matches.length > 0) {
-    showPopup(matches, x, y);
+    showPopup(matches, x, y, deckName);
     shownSentence = found.sentence;
   } else {
     hidePopup();

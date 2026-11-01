@@ -62,6 +62,29 @@ export async function getReviewStats(): Promise<ReviewStats | null> {
   }
 }
 
+// Describes a deck the way the menu needs it.
+export interface DeckChoice {
+  id: string;
+  name: string;
+}
+
+// Asks the API for the user's decks, or returns null if nobody is logged in or it's unreachable.
+export async function getDecks(): Promise<DeckChoice[] | null> {
+  const token = await getSessionToken();
+  if (!token) return null;
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    const response = await fetch(
+      `${WEB_URL}/api/decks?timeZone=${encodeURIComponent(timeZone)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 // Asks the API who's logged in, or returns null if nobody is.
 export async function getSignedInUser(): Promise<SignedInUser | null> {
   const token = await getSessionToken();

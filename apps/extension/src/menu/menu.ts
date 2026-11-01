@@ -1,5 +1,5 @@
 import { WEB_URL } from "../config";
-import { getReviewStats, getSignedInUser, signOut } from "../session";
+import { getDecks, getReviewStats, getSignedInUser, signOut } from "../session";
 import { showDueCount } from "../background/dueBadge";
 import { getSettings, saveSettings, type Trigger } from "../settings";
 
@@ -11,6 +11,8 @@ const logInButton = document.getElementById("log-in")!;
 const logOutButton = document.getElementById("log-out")!;
 const reviewStatus = document.getElementById("review-status")!;
 const startReviewButton = document.getElementById("start-review")!;
+const deckPicker = document.getElementById("deck-picker")!;
+const deckSelect = document.getElementById("deck") as HTMLSelectElement;
 
 // Saves the choice whenever an option is picked.
 for (const option of options) {
@@ -23,6 +25,15 @@ for (const option of options) {
 getSettings().then((settings) => {
   for (const option of options)
     option.checked = option.value === settings.trigger;
+});
+
+// Saves the chosen deck, with its name for the pop-up.
+deckSelect.addEventListener("change", () => {
+  const chosen = deckSelect.selectedOptions[0];
+  saveSettings({
+    deckId: chosen?.value ?? null,
+    deckName: chosen?.textContent ?? null,
+  });
 });
 
 // Opens the web app's sign-in page in a new tab.
@@ -51,7 +62,34 @@ async function showAccount(): Promise<void> {
   logOutButton.hidden = !user;
   reviewStatus.hidden = !user;
   startReviewButton.hidden = true;
-  if (user) showReview();
+  deckPicker.hidden = true;
+  if (user) {
+    showReview();
+    showDecks();
+  }
+}
+
+// Fills the deck dropdown and selects the saved deck. If that deck was deleted,
+// it asks the user to pick again instead of quietly choosing one for them.
+async function showDecks(): Promise<void> {
+  const [decks, settings] = await Promise.all([getDecks(), getSettings()]);
+  if (!decks) return;
+
+  const saved = decks.find((deck) => deck.id === settings.deckId);
+  const options = decks.map(
+    (deck) => new Option(deck.name, deck.id, false, deck === saved),
+  );
+  // Offers a blank first choice when the saved deck is gone.
+  if (settings.deckId && !saved) {
+    options.unshift(new Option("Pick a deck…", "", true, true));
+  }
+  deckSelect.replaceChildren(...options);
+  deckPicker.hidden = false;
+
+  // Keeps the remembered name up to date if the deck was renamed on the website.
+  if (saved && saved.name !== settings.deckName) {
+    saveSettings({ deckName: saved.name });
+  }
 }
 
 // Shows how many cards are due with a Start review button, and updates the toolbar icon to match.

@@ -65,18 +65,24 @@ function createPopup(): HTMLDivElement {
 }
 
 // Shows the matches next to the given point.
-export function showPopup(matches: WordMatch[], x: number, y: number): void {
+export function showPopup(
+  matches: WordMatch[],
+  x: number,
+  y: number,
+  deckName: string | null,
+): void {
   popup ??= createPopup();
   const shown = matches.slice(0, MAX_ENTRIES);
   shownEntries = shown.map((match) => match.entry);
 
   status = document.createElement("div");
   status.className = "status";
-  // Tells the user which keys save, and that P picks meanings.
+  // Tells the user which keys save, where to, and that P picks meanings.
+  const where = deckName ? ` to ${deckName}` : "";
   status.textContent =
     shown.length > 1
-      ? `A or 1–${shown.length} to save · P to pick`
-      : "A to save · P to pick";
+      ? `A or 1–${shown.length} to save${where} · P to pick`
+      : `A to save${where} · P to pick`;
 
   const numbered = shown.length > 1;
   popup.replaceChildren(
