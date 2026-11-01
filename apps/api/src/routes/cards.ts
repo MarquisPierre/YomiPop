@@ -18,6 +18,7 @@ interface NewCard {
   meanings: string[];
   entryId?: string;
   sentence?: string | null;
+  translation?: string | null;
 }
 
 // Checks new cards before they're saved.
@@ -31,15 +32,16 @@ const newCardSchema = {
     meanings: { type: "array", items: { type: "string" }, minItems: 1 },
     entryId: { type: "string" },
     sentence: { type: ["string", "null"], maxLength: 300 },
+    translation: { type: ["string", "null"], maxLength: 500 },
   },
 } as const;
 
 // Describes the fields a card edit can change.
 type CardChanges = Partial<
-  Pick<NewCard, "word" | "reading" | "meanings" | "sentence">
+  Pick<NewCard, "word" | "reading" | "meanings" | "sentence" | "translation">
 >;
 
-// Checks card edits. Only the word, reading, meanings and sentence can change, never the schedule.
+// Checks card edits. Only the word, reading, meanings, sentence and translation can change, never the schedule.
 const cardChangesSchema = {
   type: "object",
   additionalProperties: false,
@@ -49,6 +51,7 @@ const cardChangesSchema = {
     reading: { type: "string" },
     meanings: { type: "array", items: { type: "string" }, minItems: 1 },
     sentence: { type: ["string", "null"], maxLength: 300 },
+    translation: { type: ["string", "null"], maxLength: 500 },
   },
 } as const;
 
