@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import type { Grade } from "ts-fsrs";
+import { getDefaultDeck } from "../decks.js";
 import { prisma } from "../db.js";
+import { Prisma } from "../generated/prisma/client.js";
 import { requireUser } from "../requireUser.js";
 import {
   fromSchedulerCard,
@@ -9,6 +11,13 @@ import {
   scheduler,
   toSchedulerCard,
 } from "../scheduler.js";
+import {
+  isTimeZone,
+  NEW_CARD,
+  newCardsLeftToday,
+  reviewQuerySchema,
+  type ReviewQuery,
+} from "../today.js";
 
 // Describes the body of a request to add a card.
 interface NewCard {
@@ -18,6 +27,7 @@ interface NewCard {
   entryId?: string;
   sentence?: string | null;
   translation?: string | null;
+  deckId?: string;
 }
 
 // Checks new cards before they're saved.
@@ -32,6 +42,7 @@ const newCardSchema = {
     entryId: { type: "string" },
     sentence: { type: ["string", "null"], maxLength: 300 },
     translation: { type: ["string", "null"], maxLength: 500 },
+    deckId: { type: "string" },
   },
 } as const;
 
@@ -64,23 +75,6 @@ const reviewSchema = {
   },
 } as const;
 
-// Checks requests that need the user's time zone to know when their day starts.
-const timeZoneSchema = {
-  type: "object",
-  required: ["timeZone"],
-  properties: { timeZone: { type: "string", minLength: 1 } },
-} as const;
-
-// Checks whether the text is a real time zone, like "America/New_York".
-function isTimeZone(timeZone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // Returns the day before a "YYYY-MM-DD" date, in the same format.
 function dayBefore(day: string): string {
   const date = new Date(`${day}T00:00:00Z`);
@@ -97,33 +91,6 @@ function countStreak(reviewDays: Set<string>, today: string): number {
     day = dayBefore(day);
   }
   return streak;
-}
-
-// Marks a card that has never been answered. It's how ts-fsrs numbers the "new" state.
-const NEW_CARD = 0;
-
-// Counts how many more brand-new cards the user can start today, in their time zone.
-// A card uses up a slot when it gets its first answer today; undoing that answer gives it back.
-async function newCardsLeftToday(
-  userId: string,
-  timeZone: string,
-): Promise<number> {
-  const { newCardsPerDay } = await prisma.user.findUniqueOrThrow({
-    where: { id: userId },
-    select: { newCardsPerDay: true },
-  });
-
-  // Finds today's answers given to cards that were new at the time.
-  const [row] = await prisma.$queryRaw<{ started: bigint }[]>`
-    SELECT count(*) AS started
-    FROM "Review"
-    JOIN "Card" ON "Card".id = "Review"."cardId"
-    WHERE "Card"."userId" = ${userId}
-      AND ("Review"."previousState"->>'state')::int = ${NEW_CARD}
-      AND ("Review"."reviewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timeZone})::date
-        = (now() AT TIME ZONE ${timeZone})::date
-  `;
-  return Math.max(0, newCardsPerDay - Number(row?.started ?? 0));
 }
 
 // Adds the card routes to the server.
@@ -164,8 +131,17 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(409).send({ message: "Card already saved" });
       }
 
+      // Puts the card in the chosen deck, or the Default deck when none is given.
+      // A deck that isn't the user's is refused, rather than quietly saving somewhere else.
+      const deck = request.body.deckId
+        ? await prisma.deck.findFirst({
+            where: { id: request.body.deckId, userId },
+          })
+        : await getDefaultDeck(userId);
+      if (!deck) return reply.code(400).send({ message: "Unknown deck" });
+
       const card = await prisma.card.create({
-        data: { ...request.body, userId },
+        data: { ...request.body, userId, deckId: deck.id },
       });
       return reply.code(201).send(card);
     },
@@ -203,22 +179,29 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
 
   // Lists the cards to review now: every started card that's due, oldest first,
   // then brand-new cards, oldest saved first, up to what's left of today's limit.
-  app.get<{ Querystring: { timeZone: string } }>(
+  app.get<{ Querystring: ReviewQuery }>(
     "/cards/due",
-    { schema: { querystring: timeZoneSchema } },
+    { schema: { querystring: reviewQuerySchema } },
     async (request, reply) => {
       const { userId } = request;
-      const { timeZone } = request.query;
+      const { timeZone, deckId } = request.query;
       if (!isTimeZone(timeZone)) {
         return reply.code(400).send({ message: "Unknown time zone" });
       }
 
+      // Narrows the review to one deck when the user picked one.
+      const inDeck = deckId ? { deckId } : {};
       const started = await prisma.card.findMany({
-        where: { userId, state: { not: NEW_CARD }, dueAt: { lte: new Date() } },
+        where: {
+          userId,
+          ...inDeck,
+          state: { not: NEW_CARD },
+          dueAt: { lte: new Date() },
+        },
         orderBy: { dueAt: "asc" },
       });
       const fresh = await prisma.card.findMany({
-        where: { userId, state: NEW_CARD },
+        where: { userId, ...inDeck, state: NEW_CARD },
         orderBy: { createdAt: "asc" },
         take: await newCardsLeftToday(userId, timeZone),
       });
@@ -228,12 +211,13 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
 
   // Counts cards due now and later today, reviews today, and the review streak.
   // Days are counted in the user's time zone, since the server runs on UTC.
-  app.get<{ Querystring: { timeZone: string } }>(
+  // Due counts follow the chosen deck; reviews today and the streak cover all decks.
+  app.get<{ Querystring: ReviewQuery }>(
     "/cards/stats",
-    { schema: { querystring: timeZoneSchema } },
+    { schema: { querystring: reviewQuerySchema } },
     async (request, reply) => {
       const { userId } = request;
-      const { timeZone } = request.query;
+      const { timeZone, deckId } = request.query;
       if (!isTimeZone(timeZone)) {
         return reply.code(400).send({ message: "Unknown time zone" });
       }
@@ -258,6 +242,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
           ) AS "laterToday"
         FROM "Card"
         WHERE "userId" = ${userId}
+        ${deckId ? Prisma.sql`AND "deckId" = ${deckId}` : Prisma.empty}
       `;
       const days = await prisma.$queryRaw<{ day: string; reviews: bigint }[]>`
         SELECT

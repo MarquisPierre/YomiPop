@@ -31,8 +31,8 @@ export function UserMenu() {
   }
 
   return (
-    <Link href="/review" className={PRIMARY_CLASS}>
-      Start review
+    <Link href="/decks" className={PRIMARY_CLASS}>
+      Your decks
     </Link>
   );
 }
