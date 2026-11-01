@@ -2,6 +2,7 @@ import type { WordMatch } from "../dictionary/types";
 import type { Message } from "../messages";
 import { COOKIE_NAMES } from "../session";
 import { addCard } from "./addCard";
+import { askAi } from "./askAi";
 import { BADGE_ALARM, startDueBadge, updateDueBadge } from "./dueBadge";
 import { findWord } from "./findWord";
 import { injectIntoOpenTabs } from "./injectIntoOpenTabs";
@@ -53,12 +54,20 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
     if (message.type === "addCard") {
-      addCard(message.entry, message.sentence, message.translation).then(
-        (result) => {
-          sendResponse(result);
-          if (result === "added") updateDueBadge();
-        },
-      );
+      addCard(
+        message.entry,
+        message.sentence,
+        message.translation,
+        message.aiSentence,
+        message.image,
+      ).then((result) => {
+        sendResponse(result);
+        if (result === "added") updateDueBadge();
+      });
+      return true;
+    }
+    if (message.type === "aiSentences" || message.type === "aiImages") {
+      askAi(message).then(sendResponse);
       return true;
     }
   },

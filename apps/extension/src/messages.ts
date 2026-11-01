@@ -6,16 +6,48 @@ export interface LookupMessage {
   text: string;
 }
 
+// Describes an AI-made example sentence, as the API sends it.
+export interface ExampleSentence {
+  japanese: string;
+  reading: string;
+  english: string;
+}
+
+// Describes a picture the user can pick, as the API sends it.
+export interface FoundImage {
+  url: string;
+  width: number;
+  height: number;
+  attribution: string;
+  downloadLocation: string;
+}
+
 // Asks the background to save an entry as a flashcard, with the sentence it was found in and its translation.
 export interface AddCardMessage {
   type: "addCard";
   entry: DictionaryEntry;
   sentence: string;
   translation: string | null;
+  // Replaces the page sentence and its translation with an AI one, when chosen.
+  aiSentence?: ExampleSentence;
+  image?: FoundImage;
 }
 
+// Asks the background for AI sentences or pictures for a word. Fresh skips saved results.
+export interface AiMessage {
+  type: "aiSentences" | "aiImages";
+  word: string;
+  reading: string;
+  meaning: string;
+  fresh: boolean;
+}
+
+// Describes how an AI request went: the results, or a message to show.
+export type AiResult<T> =
+  { ok: true; items: T[] } | { ok: false; message: string };
+
 // Lists every message the background understands.
-export type Message = LookupMessage | AddCardMessage;
+export type Message = LookupMessage | AddCardMessage | AiMessage;
 
 // Lists the ways saving a card can end.
 export type AddCardResult =

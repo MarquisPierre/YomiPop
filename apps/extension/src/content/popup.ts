@@ -1,4 +1,5 @@
 import type { DictionaryEntry, WordMatch } from "../dictionary/types";
+import type { ExampleSentence, FoundImage } from "../messages";
 
 // Sets the gap between the cursor and the pop-up.
 const CURSOR_OFFSET = 12;
@@ -37,9 +38,19 @@ const STYLES = `
   /* Shows each meaning can be clicked. */
   .picker li { cursor: pointer; border-radius: 4px; padding: 1px 4px; }
   .picker li:hover { background: #2d333b; }
-  /* Styles the Save and Cancel buttons in the footer. */
-  .status button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 4px; background: #f0f3f6; color: #1f2328; font: inherit; cursor: pointer; }
-  .status button.secondary { background: transparent; color: #9fb3c8; }
+  /* Separates the sentence and picture sections. */
+  .section { margin-top: 8px; padding-top: 6px; border-top: 1px solid #3a4048; }
+  .label { margin-right: 6px; color: #9fb3c8; font-size: 12px; }
+  /* Styles the small buttons in each section; the chosen one is filled in. */
+  .chip { margin-right: 4px; padding: 1px 8px; border: 1px solid #3a4048; border-radius: 4px; background: transparent; color: #f0f3f6; font: inherit; font-size: 12px; cursor: pointer; }
+  .chip.on { background: #f0f3f6; color: #1f2328; }
+  .sentence { margin-top: 4px; }
+  .english { color: #9fb3c8; font-size: 12px; }
+  /* Shows short messages like "Writing sentences…" or the daily limit. */
+  .note { color: #9fb3c8; font-size: 12px; font-style: italic; }
+  /* Fits the picture to the pop-up's width without making it too tall. */
+  .photo { display: block; width: 100%; max-height: 160px; margin-top: 4px; border-radius: 4px; object-fit: cover; }
+  .credit { color: #6e7781; font-size: 11px; }
 `;
 
 let popup: HTMLDivElement | null = null;
@@ -110,65 +121,139 @@ export function getShownEntries(): DictionaryEntry[] {
 // Sets how many meanings the picker offers, one per number key.
 export const MAX_PICKABLE = 9;
 
-// Lists what the picker does when the user clicks: tick a meaning, save, or cancel.
-export interface PickerActions {
+// Describes what the card builder shows: the ticked meanings, the sentence and the picture.
+export interface BuilderView {
+  index: number;
+  chosen: Set<number>;
+  // Says which sentence is chosen; the AI one may still be loading or have failed.
+  sentenceSource: "page" | "ai";
+  pageSentence: string;
+  aiSentence: ExampleSentence | null;
+  // Holds a message to show instead of the sentence or picture, like "Writing sentences…".
+  sentenceNote: string | null;
+  image: FoundImage | null;
+  imageNote: string | null;
+}
+
+// Lists what the builder's buttons do.
+export interface BuilderActions {
   toggle: (sense: number) => void;
+  usePageSentence: () => void;
+  useAiSentence: () => void;
+  nextSentence: () => void;
+  findImage: () => void;
+  nextImage: () => void;
+  removeImage: () => void;
   save: () => void;
   cancel: () => void;
 }
 
-// Swaps the pop-up to a checklist of one entry's meanings, for picking which to save.
-// It stays where it is, since the cursor is free to wander while picking.
-export function showPicker(
-  index: number,
-  chosen: Set<number>,
-  actions: PickerActions,
-): void {
-  // Stops if the pop-up is gone or there's no entry at that spot.
-  const entry = shownEntries[index];
+// Makes a small button for the builder, filled in when it's the chosen option.
+function chip(
+  text: string,
+  onClick: () => void,
+  on = false,
+): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.className = on ? "chip on" : "chip";
+  button.textContent = text;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+// Makes a short grey line of text, for sentences' English, notes and credits.
+function line(className: string, text: string, lang?: string): HTMLDivElement {
+  const element = document.createElement("div");
+  element.className = className;
+  element.textContent = text;
+  if (lang) element.lang = lang;
+  return element;
+}
+
+// Swaps the pop-up to the card builder: meanings to tick, a sentence and a picture to choose.
+// It stays where it is, since the cursor is free to wander while building.
+export function showBuilder(view: BuilderView, actions: BuilderActions): void {
+  const entry = shownEntries[view.index];
   if (!popup || !entry) return;
 
-  // Holds the word and its checklist.
+  // Shows the word and its meanings, each clickable or ticked with its number key.
   const element = document.createElement("div");
   element.className = "entry";
-
-  // Shows the word at the top, like the normal pop-up.
-  const word = document.createElement("span");
-  word.className = "word";
-  word.lang = "ja";
-  word.textContent = entry.kanji[0] ?? entry.readings[0] ?? "";
-  element.append(word);
-
-  // Lists each meaning with its number key and whether it's ticked.
-  // Clicking a line ticks or unticks it, like its number key.
+  const word = line("word", entry.kanji[0] ?? entry.readings[0] ?? "", "ja");
   const list = document.createElement("ol");
   list.className = "picker";
   entry.senses.slice(0, MAX_PICKABLE).forEach((sense, i) => {
     const item = document.createElement("li");
-    item.textContent = `${chosen.has(i) ? "☑" : "☐"} ${i + 1}  ${sense.meanings.join("; ")}`;
-    // Greys out the line when it's unticked.
-    if (!chosen.has(i)) item.className = "unchosen";
+    item.textContent = `${view.chosen.has(i) ? "☑" : "☐"} ${i + 1}  ${sense.meanings.join("; ")}`;
+    if (!view.chosen.has(i)) item.className = "unchosen";
     item.addEventListener("click", () => actions.toggle(i));
     list.append(item);
   });
-  element.append(list);
+  element.append(word, list);
 
-  // Shows the key hints with Save and Cancel buttons for the mouse.
-  // Reuses the footer, so "Saved ✓" can replace them later.
+  // Lets the user choose the page's sentence or an AI one, and get a new AI one.
+  const sentence = document.createElement("div");
+  sentence.className = "section";
+  const ai = view.sentenceSource === "ai";
+  sentence.append(
+    line("label", "Sentence"),
+    chip("Page", actions.usePageSentence, !ai),
+    chip("AI", actions.useAiSentence, ai),
+  );
+  if (ai && view.aiSentence) {
+    sentence.append(chip("🔄 New one", actions.nextSentence));
+  }
+  if (view.sentenceNote) {
+    sentence.append(line("note", view.sentenceNote));
+  } else if (ai && view.aiSentence) {
+    sentence.append(
+      line("sentence", view.aiSentence.japanese, "ja"),
+      line("english", view.aiSentence.english),
+    );
+  } else {
+    sentence.append(
+      line("sentence", view.pageSentence || "(no sentence on the page)", "ja"),
+    );
+  }
+
+  // Lets the user find a picture, try another, or have none.
+  const picture = document.createElement("div");
+  picture.className = "section";
+  picture.append(line("label", "Picture"));
+  if (view.image) {
+    picture.append(
+      chip("🔄 Another", actions.nextImage),
+      chip("✕ None", actions.removeImage),
+    );
+    const photo = document.createElement("img");
+    photo.className = "photo";
+    photo.src = view.image.url;
+    photo.alt = "";
+    // Some sites block outside pictures; the picture still saves to the card.
+    photo.addEventListener("error", () =>
+      photo.replaceWith(
+        line(
+          "note",
+          "This site blocks the preview, but the picture will still save.",
+        ),
+      ),
+    );
+    picture.append(photo, line("credit", view.image.attribution));
+  } else {
+    picture.append(chip("Find picture", actions.findImage));
+  }
+  if (view.imageNote) picture.append(line("note", view.imageNote));
+
+  // Shows the key hints with Save and Cancel, as before.
   status = document.createElement("div");
   status.className = "status";
   status.textContent = "1–9 tick · Enter save · Esc cancel";
-  const save = document.createElement("button");
-  save.textContent = "Save";
-  save.addEventListener("click", actions.save);
-  const cancel = document.createElement("button");
-  cancel.className = "secondary";
-  cancel.textContent = "Cancel";
-  cancel.addEventListener("click", actions.cancel);
-  status.append(save, cancel);
+  status.append(
+    chip("Save", actions.save, true),
+    chip("Cancel", actions.cancel),
+  );
 
-  // Replaces what the pop-up showed, keeping it in the same place, and lets it take clicks.
-  popup.replaceChildren(element, status);
+  popup.replaceChildren(element, sentence, picture, status);
   popup.classList.add("picking");
 }
 

@@ -1,6 +1,6 @@
 import { WEB_URL } from "../config";
 import type { DictionaryEntry } from "../dictionary/types";
-import type { AddCardResult } from "../messages";
+import type { AddCardResult, ExampleSentence, FoundImage } from "../messages";
 import { getSessionToken } from "../session";
 import { getSettings } from "../settings";
 import { forgetSavedEntries, markSaved } from "./savedEntries";
@@ -10,6 +10,8 @@ export async function addCard(
   entry: DictionaryEntry,
   sentence: string,
   translation: string | null,
+  aiSentence?: ExampleSentence,
+  image?: FoundImage,
 ): Promise<AddCardResult> {
   const token = await getSessionToken();
   if (!token) return "loggedOut";
@@ -20,10 +22,13 @@ export async function addCard(
     reading: entry.kanji.length > 0 ? (entry.readings[0] ?? "") : "",
     meanings: entry.senses.map((sense) => sense.meanings.join("; ")),
     entryId: entry.id,
-    sentence: sentence.slice(0, 300) || null,
-    translation: translation?.slice(0, 500) || null,
+    // Uses the AI sentence and its English when chosen, otherwise the page sentence.
+    sentence: (aiSentence?.japanese ?? sentence).slice(0, 300) || null,
+    translation: (aiSentence?.english ?? translation)?.slice(0, 500) || null,
     // Sends the deck chosen in the menu, or none for the Default deck.
     ...(deckId ? { deckId } : {}),
+    // Sends the chosen picture, with Unsplash's "picked" address.
+    ...(image ? { image } : {}),
   };
 
   try {
