@@ -12,6 +12,7 @@ import {
   type ReviewStats as Stats,
 } from "@/lib/api";
 import { ReviewStats } from "./ReviewStats";
+import { Sentence } from "./Sentence";
 
 // Lists the answer buttons in order.
 const ANSWERS: { rating: Rating; label: string }[] = [
@@ -109,6 +110,9 @@ export function ReviewSession() {
             <p lang="ja" className="text-xl text-zinc-500">
               {card.reading}
             </p>
+            {card.sentence && (
+              <Sentence sentence={card.sentence} word={card.word} />
+            )}
             <ol className="list-decimal space-y-1 pl-6 text-left">
               {card.meanings.map((meaning) => (
                 <li key={meaning}>{meaning}</li>

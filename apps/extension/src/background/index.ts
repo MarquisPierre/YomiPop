@@ -53,7 +53,7 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
     if (message.type === "addCard") {
-      addCard(message.entry).then((result) => {
+      addCard(message.entry, message.sentence).then((result) => {
         sendResponse(result);
         if (result === "added") updateDueBadge();
       });
