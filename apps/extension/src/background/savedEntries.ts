@@ -1,8 +1,9 @@
 import { WEB_URL } from "../config";
 import { getSessionToken } from "../session";
 
-// Sets how long the saved list is trusted before it's fetched again.
-const REFRESH_AFTER = 5 * 60 * 1000;
+// Sets how long the saved list is trusted before it's fetched again. Kept short so
+// cards deleted on the website stop showing as saved by the next hover or two.
+const REFRESH_AFTER = 30 * 1000;
 
 // Names the storage slot for the list. Session storage outlives the background
 // script, which Chrome stops when idle, and is cleared when the browser closes.
