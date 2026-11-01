@@ -5,6 +5,7 @@ import { prisma } from "./db.js";
 import { sendEmail } from "./email.js";
 
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
+const WEB_URL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
 
 // Handles sign-up, log-in and sessions.
 export const auth = betterAuth({
@@ -20,6 +21,14 @@ export const auth = betterAuth({
         user.email,
         "Reset your YomiPop password",
         `Hi ${user.name},\n\nClick this link to choose a new password. It works for 1 hour:\n${url}\n\nIf you didn't ask for this, you can ignore this email.`,
+      );
+    },
+    // Tells the owner instead, since the sign-up page can't say the email is taken without revealing who has an account.
+    onExistingUserSignUp: async ({ user }) => {
+      await sendEmail(
+        user.email,
+        "You already have a YomiPop account",
+        `Hi ${user.name},\n\nSomeone (hopefully you) just tried to sign up for YomiPop with this email, but you already have an account.\n\nSign in here: ${WEB_URL}/sign-in\nForgot your password? Reset it here: ${WEB_URL}/forgot-password\n\nIf this wasn't you, you can ignore this email. Your account is safe.`,
       );
     },
   },
