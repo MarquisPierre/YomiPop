@@ -19,7 +19,7 @@ export async function checkAiLimit(userId: string): Promise<void> {
 // Records a request that worked. Failed ones and results from the cache don't count.
 export async function recordAiRequest(
   userId: string,
-  type: "sentences" | "image",
+  type: "sentences" | "image" | "explain",
 ): Promise<void> {
   await prisma.aiUsage.create({ data: { userId, type } });
 }

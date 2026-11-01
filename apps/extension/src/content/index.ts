@@ -5,6 +5,8 @@ import type {
   AiMessage,
   AiResult,
   ExampleSentence,
+  ExplainMessage,
+  ExplainResult,
   FoundImage,
   LookupMessage,
 } from "../messages";
@@ -12,10 +14,13 @@ import { getSettings, onSettingsChanged, type Trigger } from "../settings";
 import { getTextAtPoint } from "./getTextAtPoint";
 import {
   getShownEntries,
+  hideExplainButton,
   hidePopup,
   MAX_PICKABLE,
   setPopupStatus,
   showBuilder,
+  showExplainButton,
+  showExplanation,
   showPopup,
   type BuilderActions,
 } from "./popup";
@@ -92,8 +97,8 @@ function isOrphaned(): boolean {
 // Looks up the word under the cursor, right away with Shift or after a pause in hover mode.
 document.addEventListener("mousemove", (event) => {
   if (isOrphaned()) return;
-  // Keeps the pop-up still while picking meanings.
-  if (building) return;
+  // Keeps the pop-up still while picking meanings or reading an explanation.
+  if (building || explaining) return;
   clearTimeout(hoverTimer);
   latestLookup++;
 
@@ -369,10 +374,85 @@ function handleBuilderKey(event: KeyboardEvent): void {
   BUILDER_ACTIONS.toggle(digit - 1);
 }
 
+// Matches hiragana, katakana and kanji, to tell whether a selection is Japanese.
+const JAPANESE = /[\u3040-\u30ff\u3400-\u9fff]/;
+
+// Caps how long a selection can be explained, matching the API's limit.
+const MAX_EXPLAIN_LENGTH = 300;
+
+// Holds the explanation on screen: the sentence and where it sits. Lookups pause while it's open.
+let explaining: { sentence: string; rect: DOMRect } | null = null;
+
+// Returns the selected Japanese text and where it is, or null when nothing explainable is selected.
+function selectedJapanese(): { text: string; rect: DOMRect } | null {
+  const selection = window.getSelection();
+  const text = selection?.toString().trim() ?? "";
+  if (!selection || selection.rangeCount === 0) return null;
+  if (!JAPANESE.test(text) || text.length > MAX_EXPLAIN_LENGTH) return null;
+  return { text, rect: selection.getRangeAt(0).getBoundingClientRect() };
+}
+
+// Shows or hides the ✨ Explain button after the selection changes, by mouse or keyboard.
+function updateExplainButton(): void {
+  if (isOrphaned() || building || explaining) return;
+  const selected = selectedJapanese();
+  if (selected) showExplainButton(selected.rect, explainSelection);
+  else hideExplainButton();
+}
+document.addEventListener("mouseup", updateExplainButton);
+document.addEventListener("keyup", updateExplainButton);
+
+// Explains the selected sentence, showing "Explaining…" until the answer arrives.
+async function explainSelection(): Promise<void> {
+  const selected = selectedJapanese();
+  if (!selected) return;
+  hideExplainButton();
+  const mine = (explaining = { sentence: selected.text, rect: selected.rect });
+  showExplanation(
+    mine.sentence,
+    null,
+    "Explaining…",
+    mine.rect,
+    closeExplanation,
+  );
+
+  const message: ExplainMessage = { type: "explain", sentence: mine.sentence };
+  const result: ExplainResult = await chrome.runtime.sendMessage(message);
+  // Ignores the answer if the explanation was closed or replaced meanwhile.
+  if (explaining !== mine) return;
+  if (result.ok) {
+    showExplanation(
+      mine.sentence,
+      result.explanation,
+      null,
+      mine.rect,
+      closeExplanation,
+    );
+  } else {
+    showExplanation(
+      mine.sentence,
+      null,
+      result.message,
+      mine.rect,
+      closeExplanation,
+    );
+  }
+}
+
+// Closes the explanation and lets lookups carry on.
+function closeExplanation(): void {
+  explaining = null;
+  hidePopup();
+}
+
 // Sends keys to the builder while it's open. Otherwise closes the pop-up on Escape,
 // opens the builder on P, and saves an entry on A or 1–3.
 document.addEventListener("keydown", (event) => {
   if (isOrphaned()) return;
+  if (explaining && event.key === "Escape") {
+    closeExplanation();
+    return;
+  }
   if (building) {
     handleBuilderKey(event);
     return;
@@ -384,6 +464,12 @@ document.addEventListener("keydown", (event) => {
   // Reads P by key position, so it works while Shift is held.
   if (event.code === "KeyP") {
     startBuilding();
+    return;
+  }
+
+  // Explains the selected Japanese text on E, read by key position like P.
+  if (event.code === "KeyE" && selectedJapanese()) {
+    explainSelection();
     return;
   }
 
