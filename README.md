@@ -6,7 +6,7 @@ Read Japanese anywhere on the web, save the words you meet, and review them on c
 
 **Live:** https://yomipop.vercel.app · **Demo login:** [coming soon]
 
-[60-second GIF: hover a word → save it with an AI sentence and picture → review it]
+![Hovering a Japanese word on NHK News, then building a card with an AI sentence and a picture and saving it](docs/demo.gif)
 
 ## What it does
 
