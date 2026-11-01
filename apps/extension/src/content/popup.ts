@@ -255,6 +255,10 @@ export function showBuilder(view: BuilderView, actions: BuilderActions): void {
     photo.className = "photo";
     photo.src = view.image.url;
     photo.alt = "";
+    // Refits the box once the picture has loaded, since only then is its height known.
+    photo.addEventListener("load", () => {
+      if (popup) keepOnScreen(popup);
+    });
     // Some sites block outside pictures; the picture still saves to the card.
     photo.addEventListener("error", () =>
       photo.replaceWith(
@@ -281,6 +285,8 @@ export function showBuilder(view: BuilderView, actions: BuilderActions): void {
 
   popup.replaceChildren(element, sentence, picture, status);
   popup.classList.add("picking");
+  // Refits the box, since the new sentence or buttons may have made it taller.
+  keepOnScreen(popup);
 }
 
 // Builds the number, word, reading, saved badge, conjugations and meanings for one match.
@@ -418,6 +424,19 @@ function positionPopup(element: HTMLDivElement, x: number, y: number): void {
 
   element.style.left = `${Math.max(0, left)}px`;
   element.style.top = `${Math.max(0, top)}px`;
+}
+
+// Moves the box up or left just enough to fit in the window, e.g. after a picture makes it taller.
+// Leaves it alone when it already fits, so a spot the user dragged it to is kept.
+function keepOnScreen(element: HTMLDivElement): void {
+  const margin = 8;
+  const box = element.getBoundingClientRect();
+  if (box.bottom > window.innerHeight - margin) {
+    element.style.top = `${Math.max(margin, window.innerHeight - margin - box.height)}px`;
+  }
+  if (box.right > window.innerWidth - margin) {
+    element.style.left = `${Math.max(margin, window.innerWidth - margin - box.width)}px`;
+  }
 }
 
 // Lets the user drag the builder or an explanation by any empty spot, e.g. when it covers
