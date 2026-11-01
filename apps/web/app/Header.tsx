@@ -22,8 +22,8 @@ export function Header() {
       </Link>
       {session && (
         <>
-          <Link href="/review" className="text-zinc-500 hover:text-current">
-            Review
+          <Link href="/decks" className="text-zinc-500 hover:text-current">
+            Decks
           </Link>
           <Link href="/cards" className="text-zinc-500 hover:text-current">
             Cards

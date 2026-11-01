@@ -9,6 +9,7 @@ export interface Card {
   meanings: string[];
   sentence: string | null;
   translation: string | null;
+  deckId: string;
   dueAt: string;
 }
 
@@ -56,15 +57,17 @@ export async function deleteCard(id: string): Promise<void> {
   checkResponse(response);
 }
 
-// Builds the time zone part of a request, so the API counts days the way the user sees them.
-function timeZoneQuery(): string {
+// Builds the time zone part of a request, plus the deck when reviewing just one,
+// so the API counts days the way the user sees them.
+function reviewQuery(deckId?: string): string {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return `timeZone=${encodeURIComponent(timeZone)}`;
+  const deck = deckId ? `&deckId=${encodeURIComponent(deckId)}` : "";
+  return `timeZone=${encodeURIComponent(timeZone)}${deck}`;
 }
 
 // Fetches the cards to review now, with new cards held to today's limit.
-export async function getDueCards(): Promise<Card[]> {
-  const response = await fetch(`${CARDS_URL}/due?${timeZoneQuery()}`);
+export async function getDueCards(deckId?: string): Promise<Card[]> {
+  const response = await fetch(`${CARDS_URL}/due?${reviewQuery(deckId)}`);
   checkResponse(response);
   return response.json();
 }
@@ -78,8 +81,8 @@ export interface ReviewStats {
 }
 
 // Fetches the review stats, counting days in the browser's time zone.
-export async function getStats(): Promise<ReviewStats> {
-  const response = await fetch(`${CARDS_URL}/stats?${timeZoneQuery()}`);
+export async function getStats(deckId?: string): Promise<ReviewStats> {
+  const response = await fetch(`${CARDS_URL}/stats?${reviewQuery(deckId)}`);
   checkResponse(response);
   return response.json();
 }
@@ -125,4 +128,60 @@ export async function updateSettings(settings: Settings): Promise<Settings> {
   });
   checkResponse(response);
   return response.json();
+}
+
+// Means the API turned a request down, with its reason.
+export class ApiError extends Error {}
+
+// Throws the API's own reason when it turned the request down.
+async function checkResponseWithReason(response: Response): Promise<void> {
+  if (response.status === 401) throw new NotLoggedInError();
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new ApiError(body?.message ?? `API returned ${response.status}`);
+  }
+}
+
+// Points at the deck routes.
+const DECKS_URL = "/api/decks";
+
+// Describes a deck with how many cards are due and new in it.
+export interface Deck {
+  id: string;
+  name: string;
+  due: number;
+  new: number;
+}
+
+// Fetches the user's decks, oldest first.
+export async function getDecks(): Promise<Deck[]> {
+  const response = await fetch(`${DECKS_URL}?${reviewQuery()}`);
+  await checkResponseWithReason(response);
+  return response.json();
+}
+
+// Makes a new deck.
+export async function createDeck(name: string): Promise<void> {
+  const response = await fetch(DECKS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  await checkResponseWithReason(response);
+}
+
+// Renames a deck.
+export async function renameDeck(id: string, name: string): Promise<void> {
+  const response = await fetch(`${DECKS_URL}/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  await checkResponseWithReason(response);
+}
+
+// Deletes a deck and its cards.
+export async function deleteDeck(id: string): Promise<void> {
+  const response = await fetch(`${DECKS_URL}/${id}`, { method: "DELETE" });
+  await checkResponseWithReason(response);
 }

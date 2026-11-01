@@ -1,8 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
+  getDecks,
   getDueCards,
   getStats,
   NotLoggedInError,
@@ -51,6 +53,9 @@ const ANSWERS: { rating: Rating; label: string }[] = [
 // Shows due cards one at a time and sends each answer to the API.
 export function ReviewSession() {
   const router = useRouter();
+  // Reads which deck to review from the address, e.g. /review?deck=abc. None means all decks.
+  const deckId = useSearchParams().get("deck") ?? undefined;
+  const [deckName, setDeckName] = useState<string | null>(null);
   const [cards, setCards] = useState<Card[] | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +86,7 @@ export function ReviewSession() {
 
   // Refreshes the numbers above the review. They're extra, so failures are ignored.
   function loadStats() {
-    getStats()
+    getStats(deckId)
       .then(setStats)
       .catch(() => {});
   }
@@ -89,7 +94,7 @@ export function ReviewSession() {
   // Loads the due cards, or sends the user to sign in if they're logged out.
   function loadCards() {
     loadStats();
-    getDueCards()
+    getDueCards(deckId)
       .then((due) => {
         // Starts a new session, so earlier answers can't be undone from here.
         setAnswered([]);
@@ -102,7 +107,20 @@ export function ReviewSession() {
       );
   }
 
-  useEffect(loadCards, [router]);
+  useEffect(loadCards, [router, deckId]);
+
+  // Looks up the deck's name to show above the card.
+  useEffect(() => {
+    if (!deckId) return;
+    getDecks()
+      .then((decks) =>
+        setDeckName(decks.find((deck) => deck.id === deckId)?.name ?? null),
+      )
+      .catch(() => {});
+  }, [deckId]);
+
+  // Names what's being reviewed: the deck, or all decks.
+  const deckLabel = deckId ? (deckName ?? "…") : "All decks";
 
   const card = cards?.[0];
   // Reads the kana reading when there is one, since voices sometimes misread kanji.
@@ -181,6 +199,7 @@ export function ReviewSession() {
   if (!card) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
+        <p className="font-medium">{deckLabel}</p>
         <ReviewStats stats={stats} />
         <p className="text-2xl font-semibold">All done for now</p>
         {undoButton}
@@ -191,6 +210,9 @@ export function ReviewSession() {
         >
           Check again
         </button>
+        <Link href="/decks" className="text-sm text-zinc-500 underline">
+          Back to decks
+        </Link>
       </div>
     );
   }
@@ -212,6 +234,7 @@ export function ReviewSession() {
           Auto-play
         </label>
       </div>
+      <p className="w-full font-medium">{deckLabel}</p>
       <ProgressBar
         done={answered.length}
         total={answered.length + cards.length}
