@@ -74,3 +74,24 @@ export async function askExplain(sentence: string): Promise<ExplainResult> {
     return { ok: false, message: "Couldn't reach YomiPop" };
   }
 }
+
+// Asks the API for a link to the AI voice reading the text, or null when it can't right now.
+// The API makes each text once and stores it, so most words come back instantly.
+export async function askSpeech(text: string): Promise<string | null> {
+  const token = await getSessionToken();
+  if (!token) return null;
+  try {
+    const response = await fetch(`${WEB_URL}/api/ai/speech`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ text: text.slice(0, 300) }),
+    });
+    if (!response.ok) return null;
+    return ((await response.json()) as { url?: string }).url ?? null;
+  } catch {
+    return null;
+  }
+}

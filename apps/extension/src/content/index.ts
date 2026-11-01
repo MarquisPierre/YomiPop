@@ -24,6 +24,7 @@ import {
   showPopup,
   type BuilderActions,
 } from "./popup";
+import { speak } from "./speak";
 import { translateSentence } from "./translate";
 
 // Sets how long the cursor must rest on a word in hover mode.
@@ -349,6 +350,10 @@ const BUILDER_ACTIONS: BuilderActions = {
     building = null;
     hidePopup();
   },
+  // Reads Japanese text aloud with the natural AI voice.
+  speak(text) {
+    speak(text);
+  },
 };
 
 // Handles keys while the builder is open: numbers tick, Enter saves, Escape cancels.
@@ -464,6 +469,13 @@ document.addEventListener("keydown", (event) => {
   // Reads P by key position, so it works while Shift is held.
   if (event.code === "KeyP") {
     startBuilding();
+    return;
+  }
+
+  // Reads the top word aloud on R, by key position like A and P.
+  if (event.code === "KeyR") {
+    const entry = getShownEntries()[0];
+    if (entry) speak(entry.readings[0] ?? entry.kanji[0] ?? "");
     return;
   }
 

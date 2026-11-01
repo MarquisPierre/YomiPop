@@ -62,9 +62,15 @@ export interface ExplainMessage {
 export type ExplainResult =
   { ok: true; explanation: Explanation } | { ok: false; message: string };
 
+// Asks the background for a link to the AI voice reading the text.
+export interface SpeechMessage {
+  type: "speech";
+  text: string;
+}
+
 // Lists every message the background understands.
 export type Message =
-  LookupMessage | AddCardMessage | AiMessage | ExplainMessage;
+  LookupMessage | AddCardMessage | AiMessage | ExplainMessage | SpeechMessage;
 
 // Lists the ways saving a card can end.
 export type AddCardResult =
