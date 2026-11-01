@@ -7,6 +7,7 @@ export interface Card {
   word: string;
   reading: string;
   meanings: string[];
+  sentence: string | null;
   dueAt: string;
 }
 
@@ -23,7 +24,9 @@ function checkResponse(response: Response): void {
 }
 
 // Describes the parts of a card the user can edit.
-export type CardChanges = Partial<Pick<Card, "word" | "reading" | "meanings">>;
+export type CardChanges = Partial<
+  Pick<Card, "word" | "reading" | "meanings" | "sentence">
+>;
 
 // Fetches all of the user's cards, newest first.
 export async function getCards(): Promise<Card[]> {

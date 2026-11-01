@@ -16,6 +16,7 @@ model Card {
   reading   String
   meanings  String[]
   entryId   String?
+  sentence  String?
   createdAt DateTime @default(now())
 
   dueAt          DateTime  @default(now())

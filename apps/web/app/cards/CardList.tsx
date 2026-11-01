@@ -27,12 +27,12 @@ function describeDue(dueAt: string): string {
   return `in ${Math.round(minutes / (60 * 24))} days`;
 }
 
-// Checks whether the card's word, reading or meanings contain the search text.
+// Checks whether the card's word, reading, meanings or sentence contain the search text.
 function matchesSearch(card: Card, search: string): boolean {
   const text = search.trim().toLowerCase();
   if (!text) return true;
-  return [card.word, card.reading, ...card.meanings].some((value) =>
-    value.toLowerCase().includes(text),
+  return [card.word, card.reading, ...card.meanings, card.sentence ?? ""].some(
+    (value) => value.toLowerCase().includes(text),
   );
 }
 
@@ -84,6 +84,7 @@ export function CardList() {
         word: String(form.get("word")).trim(),
         reading: String(form.get("reading")).trim(),
         meanings,
+        sentence: String(form.get("sentence")).trim() || null,
       });
       setCards(
         (current) =>
@@ -150,6 +151,14 @@ export function CardList() {
                   rows={Math.max(2, card.meanings.length)}
                   className={INPUT_CLASS}
                 />
+                <input
+                  name="sentence"
+                  defaultValue={card.sentence ?? ""}
+                  placeholder="Example sentence"
+                  maxLength={300}
+                  lang="ja"
+                  className={`${INPUT_CLASS} sm:col-span-3`}
+                />
                 <div className="flex gap-2 sm:col-span-3 sm:justify-end">
                   <button
                     type="button"
@@ -175,8 +184,18 @@ export function CardList() {
               <span lang="ja" className="w-24 shrink-0 text-zinc-500">
                 {card.reading}
               </span>
-              <span className="min-w-0 flex-1 truncate">
-                {card.meanings.join("; ")}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">
+                  {card.meanings.join("; ")}
+                </span>
+                {card.sentence && (
+                  <span
+                    lang="ja"
+                    className="block truncate text-sm text-zinc-500"
+                  >
+                    {card.sentence}
+                  </span>
+                )}
               </span>
               <span className="w-20 shrink-0 text-sm text-zinc-500">
                 {describeDue(card.dueAt)}
