@@ -1,3 +1,5 @@
+import { SpeakButton } from "./speak";
+
 // Finds where the word appears in the sentence. Words are saved in dictionary form
 // but often appear conjugated, like 見る in 見ました, so shorter starts are tried too.
 function findWord(sentence: string, word: string): [number, number] | null {
@@ -8,7 +10,8 @@ function findWord(sentence: string, word: string): [number, number] | null {
   return null;
 }
 
-// Shows the sentence the card was saved from, with the word in bold, and its translation if wanted.
+// Shows the sentence the card was saved from, with the word in bold, a speaker
+// button, and its translation if wanted.
 export function Sentence({
   sentence,
   word,
@@ -32,6 +35,9 @@ export function Sentence({
         ) : (
           sentence
         )}
+        <span className="ml-1">
+          <SpeakButton text={sentence} label="Read the sentence (S)" />
+        </span>
       </p>
       {translation && <p className="text-sm text-zinc-500">{translation}</p>}
     </div>

@@ -13,23 +13,26 @@ import {
 } from "@/lib/api";
 import { ReviewStats } from "./ReviewStats";
 import { Sentence } from "./Sentence";
+import { SpeakButton, speak } from "./speak";
 
-// Names the browser storage slot that remembers whether translations are shown.
+// Names the browser storage slots that remember the review page's checkboxes.
 const TRANSLATION_KEY = "yomipop.showTranslation";
+const AUTO_PLAY_KEY = "yomipop.autoPlay";
 
-// Reads whether translations are shown, defaulting to yes. Storage can be blocked, so failures count as yes.
-function loadShowTranslation(): boolean {
+// Reads a remembered checkbox. Storage can be blocked, so failures count as the default.
+function loadChoice(key: string, fallback: boolean): boolean {
   try {
-    return localStorage.getItem(TRANSLATION_KEY) !== "off";
+    const saved = localStorage.getItem(key);
+    return saved === null ? fallback : saved === "on";
   } catch {
-    return true;
+    return fallback;
   }
 }
 
-// Remembers whether translations are shown.
-function saveShowTranslation(show: boolean): void {
+// Remembers a checkbox.
+function saveChoice(key: string, on: boolean): void {
   try {
-    localStorage.setItem(TRANSLATION_KEY, show ? "on" : "off");
+    localStorage.setItem(key, on ? "on" : "off");
   } catch {
     // Storage is blocked, so the choice lasts until the page closes.
   }
@@ -50,12 +53,23 @@ export function ReviewSession() {
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [showTranslation, setShowTranslation] = useState(loadShowTranslation);
+  const [showTranslation, setShowTranslation] = useState(() =>
+    loadChoice(TRANSLATION_KEY, true),
+  );
+  const [autoPlay, setAutoPlay] = useState(() =>
+    loadChoice(AUTO_PLAY_KEY, false),
+  );
 
   // Turns translations on or off and remembers the choice.
   function toggleTranslation() {
-    saveShowTranslation(!showTranslation);
+    saveChoice(TRANSLATION_KEY, !showTranslation);
     setShowTranslation(!showTranslation);
+  }
+
+  // Turns reading the word aloud on reveal on or off and remembers the choice.
+  function toggleAutoPlay() {
+    saveChoice(AUTO_PLAY_KEY, !autoPlay);
+    setAutoPlay(!autoPlay);
   }
 
   // Refreshes the numbers above the review. They're extra, so failures are ignored.
@@ -80,6 +94,14 @@ export function ReviewSession() {
   useEffect(loadCards, [router]);
 
   const card = cards?.[0];
+  // Reads the kana reading when there is one, since voices sometimes misread kanji.
+  const spokenWord = card ? card.reading || card.word : "";
+
+  // Shows the answer, reading the word aloud if auto-play is on.
+  function reveal() {
+    setRevealed(true);
+    if (autoPlay) speak(spokenWord);
+  }
 
   // Moves to the next card and sends the answer in the background.
   function answer(rating: Rating) {
@@ -91,15 +113,22 @@ export function ReviewSession() {
       .catch(() => setError("Couldn't save that answer."));
   }
 
-  // Lets Space show the answer and 1–4 pick a rating.
+  // Lets Space show the answer, 1–4 pick a rating, and W or S read the word or sentence.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === " " && !revealed) {
         event.preventDefault();
-        setRevealed(true);
+        reveal();
       }
       const rating = Number(event.key);
       if (revealed && rating >= 1 && rating <= 4) answer(rating as Rating);
+
+      const key = event.key.toLowerCase();
+      if (revealed && key === "w") speak(spokenWord);
+      if (revealed && key === "s" && card?.sentence) {
+        speak(card.sentence);
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -135,6 +164,10 @@ export function ReviewSession() {
           />
           Show translation
         </label>
+        <label className="flex items-center gap-2 text-sm text-zinc-500">
+          <input type="checkbox" checked={autoPlay} onChange={toggleAutoPlay} />
+          Auto-play
+        </label>
       </div>
       <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-zinc-200 p-8 text-center dark:border-zinc-800">
         <p className="text-sm text-zinc-500">{cards.length} left</p>
@@ -147,6 +180,9 @@ export function ReviewSession() {
           <>
             <p lang="ja" className="text-xl text-zinc-500">
               {card.reading}
+              <span className="ml-2">
+                <SpeakButton text={spokenWord} label="Read the word (W)" />
+              </span>
             </p>
             {card.sentence && (
               <Sentence
@@ -175,7 +211,7 @@ export function ReviewSession() {
           </>
         ) : (
           <button
-            onClick={() => setRevealed(true)}
+            onClick={reveal}
             className="rounded-lg bg-zinc-900 px-6 py-2 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
             Show answer <span className="text-xs opacity-60">Space</span>
