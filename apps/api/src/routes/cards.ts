@@ -4,6 +4,7 @@ import { getDefaultDeck } from "../decks.js";
 import { prisma } from "../db.js";
 import { Prisma } from "../generated/prisma/client.js";
 import { requireUser } from "../requireUser.js";
+import { reportImageUse } from "../services/ai/images.js";
 import {
   fromSchedulerCard,
   restoreSchedule,
@@ -26,6 +27,8 @@ interface NewImage {
   attribution: string;
   width?: number;
   height?: number;
+  // Holds the address Unsplash asks us to visit when the photo is picked. It isn't stored.
+  downloadLocation?: string;
 }
 
 interface NewCard {
@@ -62,15 +65,22 @@ const newCardSchema = {
       required: ["url", "attribution"],
       additionalProperties: false,
       properties: {
-        // Only accepts Pexels pictures, the one image source the app uses.
+        // Only accepts Unsplash pictures, the one image source the app uses.
+        // Unsplash image links are long, so this allows up to 1000 characters.
         url: {
           type: "string",
-          maxLength: 500,
-          pattern: "^https://images\\.pexels\\.com/",
+          maxLength: 1000,
+          pattern: "^https://images\\.unsplash\\.com/",
         },
         attribution: { type: "string", maxLength: 200 },
         width: { type: "integer" },
         height: { type: "integer" },
+        // Only accepts Unsplash's own "photo was picked" address.
+        downloadLocation: {
+          type: "string",
+          maxLength: 500,
+          pattern: "^https://api\\.unsplash\\.com/",
+        },
       },
     },
   },
@@ -181,10 +191,19 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
 
       // Saves the picture first, then the card pointing to it, together so neither is left half-saved.
       const { image, ...fields } = request.body;
+      // Keeps the Unsplash "picked" address out of the database; it's only reported.
+      const downloadLocation = image?.downloadLocation;
       const card = await prisma.$transaction(async (tx) => {
         const media = image
           ? await tx.media.create({
-              data: { ...image, userId, source: "search" },
+              data: {
+                url: image.url,
+                attribution: image.attribution,
+                width: image.width,
+                height: image.height,
+                userId,
+                source: "search",
+              },
             })
           : null;
         return tx.card.create({
@@ -197,6 +216,8 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
           include: CARD_IMAGE,
         });
       });
+      // Tells Unsplash the photo was picked, without making the save wait.
+      if (downloadLocation) void reportImageUse(downloadLocation);
       return reply.code(201).send(card);
     },
   );
