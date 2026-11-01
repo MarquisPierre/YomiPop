@@ -10,9 +10,21 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Starts a throwaway Postgres for the API tests, as the build plan suggests.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: yomipop_test
+        ports: ["5432:5432"]
+        # Waits until Postgres accepts connections before the steps start.
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      # Lets Prisma build its client. CI never connects to a database.
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/yomipop_test
+      TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/yomipop_test
     steps:
       - uses: actions/checkout@v5
 
