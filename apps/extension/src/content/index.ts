@@ -1,5 +1,13 @@
 import type { WordMatch } from "../dictionary/types";
-import type { AddCardMessage, AddCardResult, LookupMessage } from "../messages";
+import type {
+  AddCardMessage,
+  AddCardResult,
+  AiMessage,
+  AiResult,
+  ExampleSentence,
+  FoundImage,
+  LookupMessage,
+} from "../messages";
 import { getSettings, onSettingsChanged, type Trigger } from "../settings";
 import { getTextAtPoint } from "./getTextAtPoint";
 import {
@@ -7,9 +15,9 @@ import {
   hidePopup,
   MAX_PICKABLE,
   setPopupStatus,
-  showPicker,
+  showBuilder,
   showPopup,
-  type PickerActions,
+  type BuilderActions,
 } from "./popup";
 import { translateSentence } from "./translate";
 
@@ -30,8 +38,21 @@ let deckName: string | null = null;
 let latestLookup = 0;
 let hoverTimer: number | undefined;
 let shownSentence = "";
-// Holds the open meaning picker: which entry it's for and which meanings are ticked.
-let picking: { index: number; chosen: Set<number> } | null = null;
+// Holds the open card builder: the entry, its ticked meanings, and the sentence and picture choices.
+interface Builder {
+  index: number;
+  chosen: Set<number>;
+  pageSentence: string;
+  sentenceSource: "page" | "ai";
+  aiSentences: ExampleSentence[];
+  aiIndex: number;
+  sentenceNote: string | null;
+  images: FoundImage[];
+  // Points at the picture being shown, or -1 for none.
+  imageIndex: number;
+  imageNote: string | null;
+}
+let building: Builder | null = null;
 
 getSettings().then((settings) => {
   trigger = settings.trigger;
@@ -72,7 +93,7 @@ function isOrphaned(): boolean {
 document.addEventListener("mousemove", (event) => {
   if (isOrphaned()) return;
   // Keeps the pop-up still while picking meanings.
-  if (picking) return;
+  if (building) return;
   clearTimeout(hoverTimer);
   latestLookup++;
 
@@ -98,10 +119,11 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 // Saves the entry at that spot in the pop-up and shows how it went.
-// When meanings were picked, only those go on the card.
+// When meanings were picked, only those go on the card, with any AI sentence and picture chosen.
 async function saveShownEntry(
   index: number,
   chosen?: Set<number>,
+  extras: { aiSentence?: ExampleSentence; image?: FoundImage } = {},
 ): Promise<void> {
   const shown = getShownEntries()[index];
   if (!shown) return;
@@ -118,7 +140,9 @@ async function saveShownEntry(
     type: "addCard",
     entry,
     sentence,
-    translation: await translateSentence(sentence),
+    // Skips Chrome's translator for an AI sentence, which already has its English.
+    translation: extras.aiSentence ? null : await translateSentence(sentence),
+    ...extras,
   };
   const result: AddCardResult = await chrome.runtime.sendMessage(message);
   setPopupStatus(SAVE_RESULTS[result](word));
@@ -138,81 +162,219 @@ function entryIndexForKey(event: KeyboardEvent): number | null {
   return digit === null ? null : digit - 1;
 }
 
-// Opens the meaning picker for the top entry, with nothing ticked yet.
-function startPicking(): void {
-  const entry = getShownEntries()[0];
-  if (!entry) return;
+// Draws the builder as it stands now.
+function redraw(): void {
+  if (!building) return;
+  const b = building;
+  showBuilder(
+    {
+      index: b.index,
+      chosen: b.chosen,
+      sentenceSource: b.sentenceSource,
+      pageSentence: b.pageSentence,
+      aiSentence: b.aiSentences[b.aiIndex] ?? null,
+      sentenceNote: b.sentenceNote,
+      image: b.images[b.imageIndex] ?? null,
+      imageNote: b.imageNote,
+    },
+    BUILDER_ACTIONS,
+  );
+}
 
-  // Cancels any lookup still on its way, so it can't replace the picker.
+// Opens the card builder for the top entry, with nothing ticked and the page's sentence.
+function startBuilding(): void {
+  if (!getShownEntries()[0]) return;
+  // Cancels any lookup still on its way, so it can't replace the builder.
   clearTimeout(hoverTimer);
   latestLookup++;
-
-  picking = { index: 0, chosen: new Set() };
-  showPicker(picking.index, picking.chosen, PICKER_ACTIONS);
+  building = {
+    index: 0,
+    chosen: new Set(),
+    pageSentence: shownSentence,
+    sentenceSource: "page",
+    aiSentences: [],
+    aiIndex: 0,
+    sentenceNote: null,
+    images: [],
+    imageIndex: -1,
+    imageNote: null,
+  };
+  redraw();
 }
 
-// Ticks or unticks a meaning in the open picker and redraws it.
-function toggleSense(sense: number): void {
-  if (!picking) return;
-  if (picking.chosen.has(sense)) picking.chosen.delete(sense);
-  else picking.chosen.add(sense);
-  showPicker(picking.index, picking.chosen, PICKER_ACTIONS);
+// Asks the API, through the background, for AI sentences or pictures for the builder's word.
+// Uses the ticked meanings, or the first one when none are ticked yet.
+async function askAi<T>(
+  b: Builder,
+  type: AiMessage["type"],
+  fresh: boolean,
+): Promise<AiResult<T>> {
+  const entry = getShownEntries()[b.index]!;
+  const ticked = entry.senses.filter((_, i) => b.chosen.has(i));
+  const senses = ticked.length > 0 ? ticked : entry.senses.slice(0, 1);
+  const message: AiMessage = {
+    type,
+    word: entry.kanji[0] ?? entry.readings[0] ?? "",
+    reading: entry.readings[0] ?? "",
+    meaning: senses.map((sense) => sense.meanings.join("; ")).join("; "),
+    fresh,
+  };
+  return chrome.runtime.sendMessage(message);
 }
 
-// Saves the ticked meanings and closes the picker, unless none are ticked.
-function savePicked(): void {
-  if (!picking) return;
-  if (picking.chosen.size === 0) {
-    setPopupStatus("Tick at least one meaning");
-    return;
+// Loads 3 AI sentences, showing a note while waiting or if it fails.
+// Fresh asks for new ones instead of the saved ones.
+async function loadSentences(fresh: boolean): Promise<void> {
+  const b = building;
+  if (!b) return;
+  b.sentenceNote = "Writing sentences…";
+  redraw();
+  const result = await askAi<ExampleSentence>(b, "aiSentences", fresh);
+  // Ignores the answer if the builder was closed or reopened meanwhile.
+  if (building !== b) return;
+  if (result.ok) {
+    b.aiSentences = result.items;
+    b.aiIndex = 0;
+    b.sentenceNote = null;
+  } else {
+    b.sentenceNote = result.message;
   }
-  const { index, chosen } = picking;
-  picking = null;
-  saveShownEntry(index, chosen);
+  redraw();
 }
 
-// Closes the picker without saving.
-function cancelPicking(): void {
-  picking = null;
-  hidePopup();
+// Loads pictures, the same way as sentences.
+async function loadImages(fresh: boolean): Promise<void> {
+  const b = building;
+  if (!b) return;
+  b.imageNote = "Finding pictures…";
+  redraw();
+  const result = await askAi<FoundImage>(b, "aiImages", fresh);
+  if (building !== b) return;
+  if (result.ok) {
+    b.images = result.items;
+    b.imageIndex = 0;
+    b.imageNote = null;
+  } else {
+    b.imageNote = result.message;
+  }
+  redraw();
 }
 
-// Connects the picker's clicks to the same steps as its keys.
-const PICKER_ACTIONS: PickerActions = {
-  toggle: toggleSense,
-  save: savePicked,
-  cancel: cancelPicking,
+// Connects the builder's buttons and keys to what they do.
+const BUILDER_ACTIONS: BuilderActions = {
+  // Ticks or unticks a meaning.
+  toggle(sense) {
+    if (!building) return;
+    if (building.chosen.has(sense)) building.chosen.delete(sense);
+    else building.chosen.add(sense);
+    redraw();
+  },
+  // Goes back to the page's sentence. The AI ones are kept in case the user switches back.
+  usePageSentence() {
+    if (!building) return;
+    building.sentenceSource = "page";
+    building.sentenceNote = null;
+    redraw();
+  },
+  // Shows an AI sentence, loading them the first time.
+  useAiSentence() {
+    if (!building) return;
+    building.sentenceSource = "ai";
+    if (building.aiSentences.length > 0) redraw();
+    else loadSentences(false);
+  },
+  // Shows the next AI sentence, or asks for new ones after the last.
+  nextSentence() {
+    if (!building) return;
+    if (building.aiIndex + 1 < building.aiSentences.length) {
+      building.aiIndex++;
+      redraw();
+    } else {
+      loadSentences(true);
+    }
+  },
+  // Shows a picture, loading them the first time.
+  findImage() {
+    if (!building) return;
+    if (building.images.length > 0) {
+      building.imageIndex = 0;
+      redraw();
+    } else {
+      loadImages(false);
+    }
+  },
+  // Shows the next picture, or asks for new ones after the last.
+  nextImage() {
+    if (!building) return;
+    if (building.imageIndex + 1 < building.images.length) {
+      building.imageIndex++;
+      redraw();
+    } else {
+      loadImages(true);
+    }
+  },
+  // Saves the card without a picture.
+  removeImage() {
+    if (!building) return;
+    building.imageIndex = -1;
+    redraw();
+  },
+  // Saves the card with what's chosen, unless something is missing.
+  save() {
+    const b = building;
+    if (!b) return;
+    if (b.chosen.size === 0) {
+      setPopupStatus("Tick at least one meaning");
+      return;
+    }
+    const aiSentence =
+      b.sentenceSource === "ai" ? b.aiSentences[b.aiIndex] : undefined;
+    if (b.sentenceSource === "ai" && !aiSentence) {
+      setPopupStatus("Wait for the AI sentence, or choose Page");
+      return;
+    }
+    building = null;
+    saveShownEntry(b.index, b.chosen, {
+      aiSentence,
+      image: b.images[b.imageIndex],
+    });
+  },
+  // Closes the builder without saving.
+  cancel() {
+    building = null;
+    hidePopup();
+  },
 };
 
-// Handles keys while the picker is open: numbers tick, Enter saves, Escape cancels.
+// Handles keys while the builder is open: numbers tick, Enter saves, Escape cancels.
 // Other keys are left alone, so browser shortcuts still work.
-function handlePickerKey(event: KeyboardEvent): void {
+function handleBuilderKey(event: KeyboardEvent): void {
   if (event.key === "Escape") {
     event.preventDefault();
-    cancelPicking();
+    BUILDER_ACTIONS.cancel();
     return;
   }
   if (event.key === "Enter") {
     event.preventDefault();
-    savePicked();
+    BUILDER_ACTIONS.save();
     return;
   }
 
   // Ticks or unticks the meaning at that number, if the entry has one there.
   const digit = digitForKey(event);
-  const entry = picking && getShownEntries()[picking.index];
+  const entry = building && getShownEntries()[building.index];
   if (digit === null || !entry) return;
   if (digit > Math.min(entry.senses.length, MAX_PICKABLE)) return;
   event.preventDefault();
-  toggleSense(digit - 1);
+  BUILDER_ACTIONS.toggle(digit - 1);
 }
 
-// Sends keys to the picker while it's open. Otherwise closes the pop-up on Escape,
-// opens the picker on P, and saves an entry on A or 1–3.
+// Sends keys to the builder while it's open. Otherwise closes the pop-up on Escape,
+// opens the builder on P, and saves an entry on A or 1–3.
 document.addEventListener("keydown", (event) => {
   if (isOrphaned()) return;
-  if (picking) {
-    handlePickerKey(event);
+  if (building) {
+    handleBuilderKey(event);
     return;
   }
 
@@ -221,7 +383,7 @@ document.addEventListener("keydown", (event) => {
 
   // Reads P by key position, so it works while Shift is held.
   if (event.code === "KeyP") {
-    startPicking();
+    startBuilding();
     return;
   }
 

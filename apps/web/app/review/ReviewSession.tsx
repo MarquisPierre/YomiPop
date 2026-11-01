@@ -15,6 +15,7 @@ import {
   type ReviewStats as Stats,
 } from "@/lib/api";
 import { ProgressBar } from "./ProgressBar";
+import { CardImage } from "./CardImage";
 import { ReviewStats } from "./ReviewStats";
 import { Sentence } from "./Sentence";
 import { SpeakButton, speak } from "./speak";
@@ -254,6 +255,7 @@ export function ReviewSession() {
                 <SpeakButton text={spokenWord} label="Read the word (W)" />
               </span>
             </p>
+            {card.image && <CardImage image={card.image} />}
             {card.sentence && (
               <Sentence
                 sentence={card.sentence}

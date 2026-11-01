@@ -13,6 +13,8 @@ export interface Card {
   dueAt: string;
   // Counts how many times the card has been answered.
   reps: number;
+  // Holds the card's picture and its credit line, or null when it has none.
+  image: { url: string; attribution: string } | null;
 }
 
 // Lists the answers: 1 = Again, 2 = Hard, 3 = Good, 4 = Easy.
@@ -33,7 +35,40 @@ export type CardChanges = Partial<
     Card,
     "word" | "reading" | "meanings" | "sentence" | "translation" | "deckId"
   >
->;
+> & {
+  // Removes the card's picture. Null is the only value allowed.
+  imageId?: null;
+  image?: FoundImage;
+};
+
+// Describes a picture found for a card, as the API sends it.
+export interface FoundImage {
+  url: string;
+  width: number;
+  height: number;
+  attribution: string;
+  downloadLocation: string;
+}
+
+// Finds pictures for a card's word. Fresh asks for new ones instead of saved ones.
+export async function findImages(
+  card: Card,
+  fresh: boolean,
+): Promise<FoundImage[]> {
+  const response = await fetch("/api/ai/image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      word: card.word,
+      reading: card.reading,
+      // Uses the first two meanings, which is enough for a good search and stays within the limit.
+      meaning: card.meanings.slice(0, 2).join("; ").slice(0, 200),
+      fresh,
+    }),
+  });
+  await checkResponseWithReason(response);
+  return (await response.json()).images;
+}
 
 // Fetches all of the user's cards, newest first.
 export async function getCards(): Promise<Card[]> {

@@ -114,6 +114,8 @@ export function CardList() {
         sentence: String(form.get("sentence")).trim() || null,
         translation: String(form.get("translation")).trim() || null,
         deckId: String(form.get("deckId")),
+        // Takes the picture off the card when the box is ticked.
+        ...(form.get("removeImage") === "on" ? { imageId: null } : {}),
       });
       setCards(
         (current) =>
@@ -234,6 +236,12 @@ export function CardList() {
                     ))}
                   </select>
                 </label>
+                {card.image && (
+                  <label className="flex items-center gap-2 text-sm text-zinc-500 sm:col-span-3">
+                    <input type="checkbox" name="removeImage" />
+                    Remove picture
+                  </label>
+                )}
                 <div className="flex gap-2 sm:col-span-3 sm:justify-end">
                   <button
                     type="button"
@@ -264,6 +272,7 @@ export function CardList() {
             >
               <span lang="ja" className="w-24 shrink-0 text-lg font-semibold">
                 {card.word}
+                {card.image && <span title="Has a picture"> 🖼️</span>}
               </span>
               <span lang="ja" className="w-24 shrink-0 text-zinc-500">
                 {card.reading}
@@ -334,6 +343,13 @@ export function CardList() {
             setEditingId(previewCard.id);
           }}
           onClose={() => setPreviewId(null)}
+          onChange={(updated) =>
+            setCards(
+              (current) =>
+                current?.map((c) => (c.id === updated.id ? updated : c)) ??
+                null,
+            )
+          }
         />
       )}
     </div>
