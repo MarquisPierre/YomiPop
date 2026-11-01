@@ -9,10 +9,11 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { updateCard, type Card } from "@/lib/api";
+import { ApiError, updateCard, uploadPicture, type Card } from "@/lib/api";
 import { CardImage } from "../review/CardImage";
 import { Sentence } from "../review/Sentence";
 import { SpeakButton } from "../review/speak";
+import { UploadButton } from "../UploadButton";
 import { PicturePicker } from "./PicturePicker";
 
 // Shows a card the way it looks after revealing it in review, floating over the page.
@@ -36,6 +37,23 @@ export function CardPreview({
 }) {
   // Says whether the picture picker is open.
   const [choosingPicture, setChoosingPicture] = useState(false);
+  // Holds why an upload failed, if it did.
+  const [uploadNote, setUploadNote] = useState<string | null>(null);
+
+  // Uploads a picture from the device and puts it on the card straight away.
+  async function uploadToCard(file: File) {
+    setUploadNote(null);
+    try {
+      const image = await uploadPicture(file, "card");
+      onChange(await updateCard(card.id, { image }));
+    } catch (error) {
+      setUploadNote(
+        error instanceof ApiError
+          ? error.message
+          : "Couldn't upload the picture.",
+      );
+    }
+  }
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -95,7 +113,8 @@ export function CardPreview({
             <span>
               {deckName} · {due} · reviewed {card.reps}×
             </span>
-            <span className="flex gap-1">
+            <span className="flex flex-wrap gap-1">
+              <UploadButton label="Upload" onFile={uploadToCard} />
               <Button
                 variant="ghost"
                 size="sm"
@@ -110,6 +129,9 @@ export function CardPreview({
               </Button>
             </span>
           </div>
+          {uploadNote && (
+            <p className="text-sm text-destructive">{uploadNote}</p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

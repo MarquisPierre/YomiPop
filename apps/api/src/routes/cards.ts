@@ -5,6 +5,7 @@ import { prisma } from "../db.js";
 import { Prisma } from "../generated/prisma/client.js";
 import { requireUser } from "../requireUser.js";
 import { reportImageUse } from "../services/ai/images.js";
+import { publicBucketPrefix } from "../services/storage.js";
 import {
   fromSchedulerCard,
   restoreSchedule,
@@ -24,7 +25,8 @@ import {
 // Describes a picture chosen for a new card.
 interface NewImage {
   url: string;
-  attribution: string;
+  // Holds the credit line for Unsplash photos. The user's own uploads have none.
+  attribution?: string;
   width?: number;
   height?: number;
   // Holds the address Unsplash asks us to visit when the photo is picked. It isn't stored.
@@ -47,18 +49,20 @@ const CARD_IMAGE = {
   image: { select: { url: true, attribution: true } },
 } as const;
 
-// Checks a picture chosen for a card. Only Unsplash pictures are accepted.
+// Checks a picture chosen for a card: an Unsplash photo, or one the user uploaded.
 const imageSchema = {
   type: "object",
-  required: ["url", "attribution"],
+  required: ["url"],
   additionalProperties: false,
   properties: {
-    // Only accepts Unsplash pictures, the one image source the app uses.
+    // Only accepts Unsplash photos and pictures in the app's card-images bucket.
+    // Whose folder an upload is in gets checked when saving, by imageSource below.
     // Unsplash image links are long, so this allows up to 1000 characters.
     url: {
       type: "string",
       maxLength: 1000,
-      pattern: "^https://images\\.unsplash\\.com/",
+      pattern:
+        "^(https://images\\.unsplash\\.com/|https://[a-z0-9]+\\.supabase\\.co/storage/v1/object/public/card-images/)",
     },
     attribution: { type: "string", maxLength: 200 },
     width: { type: "integer" },
@@ -71,6 +75,19 @@ const imageSchema = {
     },
   },
 } as const;
+
+// Works out where a chosen picture came from: an Unsplash search, or the user's own upload.
+// Returns null for an upload in someone else's folder, so nobody can attach another person's picture.
+function imageSource(
+  url: string,
+  userId: string,
+): "search" | "uploaded" | null {
+  if (url.startsWith("https://images.unsplash.com/")) return "search";
+  const ownFolder = publicBucketPrefix("card-images");
+  return ownFolder && url.startsWith(`${ownFolder}${userId}/`)
+    ? "uploaded"
+    : null;
+}
 
 // Checks new cards before they're saved.
 const newCardSchema = {
@@ -194,6 +211,14 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
         : await getDefaultDeck(userId);
       if (!deck) return reply.code(400).send({ message: "Unknown deck" });
 
+      // Refuses a picture that isn't from Unsplash or the user's own uploads.
+      const source = request.body.image
+        ? imageSource(request.body.image.url, userId)
+        : null;
+      if (request.body.image && !source) {
+        return reply.code(400).send({ message: "Unknown picture" });
+      }
+
       // Saves the picture first, then the card pointing to it, together so neither is left half-saved.
       const { image, ...fields } = request.body;
       // Keeps the Unsplash "picked" address out of the database; it's only reported.
@@ -207,7 +232,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
                 width: image.width,
                 height: image.height,
                 userId,
-                source: "search",
+                source: source ?? "search",
               },
             })
           : null;
@@ -245,6 +270,13 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
       ) {
         return reply.code(400).send({ message: "Unknown deck" });
       }
+      // Refuses a picture that isn't from Unsplash or the user's own uploads.
+      const source = request.body.image
+        ? imageSource(request.body.image.url, userId)
+        : null;
+      if (request.body.image && !source) {
+        return reply.code(400).send({ message: "Unknown picture" });
+      }
       // Saves a newly chosen picture, then points the card at it, together.
       const { image, ...changes } = request.body;
       const updated = await prisma.$transaction(async (tx) => {
@@ -256,7 +288,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
                 width: image.width,
                 height: image.height,
                 userId,
-                source: "search",
+                source: source ?? "search",
               },
             })
           : null;
