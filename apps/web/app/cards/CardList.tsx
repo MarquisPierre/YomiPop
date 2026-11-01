@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   deleteCard,
   getCards,
@@ -10,8 +10,12 @@ import {
   updateCard,
   type Card,
   type Deck,
+  type FoundImage,
 } from "@/lib/api";
+import { CardImage } from "../review/CardImage";
 import { CardPreview } from "./CardPreview";
+import { PicturePicker } from "./PicturePicker";
+import { SentencePicker } from "./SentencePicker";
 
 // Styles the text boxes used while editing.
 const INPUT_CLASS =
@@ -59,6 +63,28 @@ export function CardList() {
   );
   // Holds the card being previewed, if any.
   const [previewId, setPreviewId] = useState<string | null>(null);
+  // Holds the edit form's open picker, and a new picture chosen but not yet saved.
+  const [editPicker, setEditPicker] = useState<"sentence" | "picture" | null>(
+    null,
+  );
+  const [newImage, setNewImage] = useState<FoundImage | null>(null);
+  // Points at the sentence and translation boxes, so an AI sentence can fill them.
+  const sentenceInput = useRef<HTMLInputElement>(null);
+  const translationInput = useRef<HTMLInputElement>(null);
+
+  // Opens a card's edit form with no picker open and no new picture.
+  function startEditing(id: string) {
+    setEditingId(id);
+    setEditPicker(null);
+    setNewImage(null);
+  }
+
+  // Closes the edit form, throwing away anything chosen but not saved.
+  function stopEditing() {
+    setEditingId(null);
+    setEditPicker(null);
+    setNewImage(null);
+  }
 
   // Shows another deck and puts it in the address, so back and bookmarks work.
   function chooseDeck(deck: string) {
@@ -114,14 +140,15 @@ export function CardList() {
         sentence: String(form.get("sentence")).trim() || null,
         translation: String(form.get("translation")).trim() || null,
         deckId: String(form.get("deckId")),
-        // Takes the picture off the card when the box is ticked.
+        // Saves a newly chosen picture, or takes the picture off when that box is ticked.
+        ...(newImage ? { image: newImage } : {}),
         ...(form.get("removeImage") === "on" ? { imageId: null } : {}),
       });
       setCards(
         (current) =>
           current?.map((c) => (c.id === updated.id ? updated : c)) ?? null,
       );
-      setEditingId(null);
+      stopEditing();
       setError(null);
     } catch {
       setError(`Couldn't save ${card.word}.`);
@@ -208,6 +235,7 @@ export function CardList() {
                   className={INPUT_CLASS}
                 />
                 <input
+                  ref={sentenceInput}
                   name="sentence"
                   defaultValue={card.sentence ?? ""}
                   placeholder="Example sentence"
@@ -216,12 +244,39 @@ export function CardList() {
                   className={`${INPUT_CLASS} sm:col-span-3`}
                 />
                 <input
+                  ref={translationInput}
                   name="translation"
                   defaultValue={card.translation ?? ""}
                   placeholder="Translation"
                   maxLength={500}
                   className={`${INPUT_CLASS} sm:col-span-3`}
                 />
+                <div className="sm:col-span-3">
+                  {editPicker === "sentence" ? (
+                    <SentencePicker
+                      card={card}
+                      onPicked={(sentence) => {
+                        // Fills the boxes, so the sentence can still be tweaked before saving.
+                        if (sentenceInput.current) {
+                          sentenceInput.current.value = sentence.japanese;
+                        }
+                        if (translationInput.current) {
+                          translationInput.current.value = sentence.english;
+                        }
+                        setEditPicker(null);
+                      }}
+                      onCancel={() => setEditPicker(null)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setEditPicker("sentence")}
+                      className={BUTTON_CLASS}
+                    >
+                      ✨ AI sentence
+                    </button>
+                  )}
+                </div>
                 <label className="flex items-center gap-2 text-sm text-zinc-500 sm:col-span-3">
                   Deck
                   <select
@@ -236,16 +291,49 @@ export function CardList() {
                     ))}
                   </select>
                 </label>
-                {card.image && (
-                  <label className="flex items-center gap-2 text-sm text-zinc-500 sm:col-span-3">
-                    <input type="checkbox" name="removeImage" />
-                    Remove picture
-                  </label>
-                )}
+                <div className="flex flex-col gap-2 sm:col-span-3">
+                  {/* Shows the newly chosen picture, or the current one. */}
+                  {(newImage ?? card.image) && (
+                    <CardImage image={(newImage ?? card.image)!} />
+                  )}
+                  {newImage && (
+                    <p className="text-xs text-zinc-500">
+                      New picture, saved when you press Save.
+                    </p>
+                  )}
+                  {editPicker === "picture" ? (
+                    <PicturePicker
+                      card={card}
+                      onPicked={(image) => {
+                        setNewImage(image);
+                        setEditPicker(null);
+                      }}
+                      onCancel={() => setEditPicker(null)}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setEditPicker("picture")}
+                        className={BUTTON_CLASS}
+                      >
+                        {card.image || newImage
+                          ? "Change picture"
+                          : "Add picture"}
+                      </button>
+                      {card.image && !newImage && (
+                        <label className="flex items-center gap-2 text-sm text-zinc-500">
+                          <input type="checkbox" name="removeImage" />
+                          Remove picture
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2 sm:col-span-3 sm:justify-end">
                   <button
                     type="button"
-                    onClick={() => setEditingId(null)}
+                    onClick={stopEditing}
                     className={BUTTON_CLASS}
                   >
                     Cancel
@@ -307,7 +395,7 @@ export function CardList() {
                 onClick={(event) => {
                   // Keeps the click from also opening the preview.
                   event.stopPropagation();
-                  setEditingId(card.id);
+                  startEditing(card.id);
                 }}
                 className={BUTTON_CLASS}
               >
@@ -340,7 +428,7 @@ export function CardList() {
           onEdit={() => {
             // Swaps the preview for that card's edit form.
             setPreviewId(null);
-            setEditingId(previewCard.id);
+            startEditing(previewCard.id);
           }}
           onClose={() => setPreviewId(null)}
           onChange={(updated) =>

@@ -1,27 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ApiError,
-  findImages,
-  updateCard,
-  type Card,
-  type FoundImage,
-} from "@/lib/api";
+import { ApiError, findImages, type Card, type FoundImage } from "@/lib/api";
 import { CardImage } from "../review/CardImage";
 
 // Styles the picker's buttons.
 const BUTTON_CLASS =
   "rounded-md px-3 py-1 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-current dark:hover:bg-zinc-900";
 
-// Finds pictures for a card on Unsplash, lets the user flip through them, and saves the one picked.
+// Finds pictures for a card on Unsplash, lets the user flip through them, and hands back the one picked.
 export function PicturePicker({
   card,
   onPicked,
   onCancel,
 }: {
   card: Card;
-  onPicked: (updated: Card) => void;
+  // Passes on the picture the user chose. The caller decides whether to save it now.
+  onPicked: (image: FoundImage) => Promise<void> | void;
   onCancel: () => void;
 }) {
   const [images, setImages] = useState<FoundImage[]>([]);
@@ -58,13 +53,13 @@ export function PicturePicker({
     findImages(card, true).then(show, fail);
   }
 
-  // Saves the picture on screen to the card.
+  // Hands the picture on screen to the caller, showing a note if saving it fails.
   async function use() {
     const image = images[index];
     if (!image) return;
     setBusy(true);
     try {
-      onPicked(await updateCard(card.id, { image }));
+      await onPicked(image);
     } catch {
       setNote("Couldn't save the picture.");
       setBusy(false);
@@ -78,16 +73,31 @@ export function PicturePicker({
       {note && <p className="text-sm text-zinc-500">{note}</p>}
       <div className="flex gap-1">
         {images.length > 0 && (
-          <button onClick={next} disabled={busy} className={BUTTON_CLASS}>
+          <button
+            type="button"
+            onClick={next}
+            disabled={busy}
+            className={BUTTON_CLASS}
+          >
             🔄 Another
           </button>
         )}
         {image && !note && (
-          <button onClick={use} disabled={busy} className={BUTTON_CLASS}>
+          <button
+            type="button"
+            onClick={use}
+            disabled={busy}
+            className={BUTTON_CLASS}
+          >
             Use this
           </button>
         )}
-        <button onClick={onCancel} disabled={busy} className={BUTTON_CLASS}>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className={BUTTON_CLASS}
+        >
           Cancel
         </button>
       </div>

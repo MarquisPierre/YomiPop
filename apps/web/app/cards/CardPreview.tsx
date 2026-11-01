@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Card } from "@/lib/api";
+import { updateCard, type Card } from "@/lib/api";
 import { CardImage } from "../review/CardImage";
 import { Sentence } from "../review/Sentence";
 import { SpeakButton } from "../review/speak";
@@ -76,7 +76,8 @@ export function CardPreview({
         {choosingPicture && (
           <PicturePicker
             card={card}
-            onPicked={(updated) => {
+            onPicked={async (image) => {
+              const updated = await updateCard(card.id, { image });
               setChoosingPicture(false);
               onChange(updated);
             }}
