@@ -28,6 +28,18 @@ const STYLES = `
   .meanings { margin: 6px 0 0; padding-left: 18px; }
   .entry + .entry { margin-top: 10px; padding-top: 10px; border-top: 1px solid #3a4048; }
   .status { margin-top: 8px; padding-top: 6px; border-top: 1px solid #3a4048; font-size: 12px; color: #9fb3c8; }
+  /* Lists the meanings without the usual numbers, since each line shows its own. */
+  .picker { margin: 6px 0 0; padding: 0; list-style: none; }
+  /* Greys out meanings that won't be saved. */
+  .unchosen { color: #6e7781; }
+  /* Lets the pop-up take clicks while picking, and only then. */
+  .popup.picking { pointer-events: auto; }
+  /* Shows each meaning can be clicked. */
+  .picker li { cursor: pointer; border-radius: 4px; padding: 1px 4px; }
+  .picker li:hover { background: #2d333b; }
+  /* Styles the Save and Cancel buttons in the footer. */
+  .status button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 4px; background: #f0f3f6; color: #1f2328; font: inherit; cursor: pointer; }
+  .status button.secondary { background: transparent; color: #9fb3c8; }
 `;
 
 let popup: HTMLDivElement | null = null;
@@ -60,8 +72,11 @@ export function showPopup(matches: WordMatch[], x: number, y: number): void {
 
   status = document.createElement("div");
   status.className = "status";
+  // Tells the user which keys save, and that P picks meanings.
   status.textContent =
-    shown.length > 1 ? `A or 1–${shown.length} to save` : "A to save";
+    shown.length > 1
+      ? `A or 1–${shown.length} to save · P to pick`
+      : "A to save · P to pick";
 
   const numbered = shown.length > 1;
   popup.replaceChildren(
@@ -70,6 +85,8 @@ export function showPopup(matches: WordMatch[], x: number, y: number): void {
     ),
     status,
   );
+  // Goes back to ignoring the mouse, so it never blocks hovering.
+  popup.classList.remove("picking");
   popup.hidden = false;
   positionPopup(popup, x, y);
 }
@@ -82,6 +99,71 @@ export function setPopupStatus(text: string): void {
 // Lists the entries on screen, or none if the pop-up is hidden.
 export function getShownEntries(): DictionaryEntry[] {
   return popup && !popup.hidden ? shownEntries : [];
+}
+
+// Sets how many meanings the picker offers, one per number key.
+export const MAX_PICKABLE = 9;
+
+// Lists what the picker does when the user clicks: tick a meaning, save, or cancel.
+export interface PickerActions {
+  toggle: (sense: number) => void;
+  save: () => void;
+  cancel: () => void;
+}
+
+// Swaps the pop-up to a checklist of one entry's meanings, for picking which to save.
+// It stays where it is, since the cursor is free to wander while picking.
+export function showPicker(
+  index: number,
+  chosen: Set<number>,
+  actions: PickerActions,
+): void {
+  // Stops if the pop-up is gone or there's no entry at that spot.
+  const entry = shownEntries[index];
+  if (!popup || !entry) return;
+
+  // Holds the word and its checklist.
+  const element = document.createElement("div");
+  element.className = "entry";
+
+  // Shows the word at the top, like the normal pop-up.
+  const word = document.createElement("span");
+  word.className = "word";
+  word.lang = "ja";
+  word.textContent = entry.kanji[0] ?? entry.readings[0] ?? "";
+  element.append(word);
+
+  // Lists each meaning with its number key and whether it's ticked.
+  // Clicking a line ticks or unticks it, like its number key.
+  const list = document.createElement("ol");
+  list.className = "picker";
+  entry.senses.slice(0, MAX_PICKABLE).forEach((sense, i) => {
+    const item = document.createElement("li");
+    item.textContent = `${chosen.has(i) ? "☑" : "☐"} ${i + 1}  ${sense.meanings.join("; ")}`;
+    // Greys out the line when it's unticked.
+    if (!chosen.has(i)) item.className = "unchosen";
+    item.addEventListener("click", () => actions.toggle(i));
+    list.append(item);
+  });
+  element.append(list);
+
+  // Shows the key hints with Save and Cancel buttons for the mouse.
+  // Reuses the footer, so "Saved ✓" can replace them later.
+  status = document.createElement("div");
+  status.className = "status";
+  status.textContent = "1–9 tick · Enter save · Esc cancel";
+  const save = document.createElement("button");
+  save.textContent = "Save";
+  save.addEventListener("click", actions.save);
+  const cancel = document.createElement("button");
+  cancel.className = "secondary";
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", actions.cancel);
+  status.append(save, cancel);
+
+  // Replaces what the pop-up showed, keeping it in the same place, and lets it take clicks.
+  popup.replaceChildren(element, status);
+  popup.classList.add("picking");
 }
 
 // Builds the number, word, reading, saved badge, conjugations and meanings for one match.
@@ -139,7 +221,10 @@ function renderMatch(
 
 // Hides the pop-up if it's showing.
 export function hidePopup(): void {
-  if (popup) popup.hidden = true;
+  if (!popup) return;
+  popup.hidden = true;
+  // Goes back to ignoring the mouse, so it never blocks hovering.
+  popup.classList.remove("picking");
 }
 
 // Places the pop-up below and to the right of the point, flipping it to stay on screen.
