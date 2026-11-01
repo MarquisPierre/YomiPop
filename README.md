@@ -66,7 +66,25 @@ Lookups never leave the browser: the dictionary lives in the extension. Everythi
 | Pictures   | Unsplash search, plus your own uploads                             |
 | Storage    | Supabase Storage                                                   |
 | Hosting    | Vercel (website), Render (API)                                     |
-| Quality    | Vitest, ESLint, Prettier, GitHub Actions CI                        |
+| Quality    | Vitest, Playwright, axe, ESLint, Prettier, GitHub Actions CI       |
+
+## Testing
+
+Every push runs the full suite in GitHub Actions, and `main` only accepts changes that pass.
+
+- **50+ unit and API tests** (Vitest), with the API tests hitting a real PostgreSQL database rather than mocks.
+- **Access tests** that sign in as two users and prove neither can read, change or delete the other's cards and decks, and that signed-out visitors are refused on every route.
+- **End-to-end tests** (Playwright) that sign up, save a card, review it and check it's scheduled for later, through the real website.
+- **Accessibility checks** (axe) on every page in light and dark mode, failing on any serious or critical problem.
+
+## Security
+
+- **Keys stay on the server.** The extension and website only talk to the API, which holds every key.
+- **Ownership checks on every route,** so users can only ever see or change their own data.
+- **Strict input checks:** every request body is validated, and unknown fields are rejected.
+- **Uploads go straight to storage** through one-time links into the user's own folder, with file names the server chooses.
+- **AI requests are rate-limited** per user and cached, and AI text is always shown as plain text, never as HTML.
+- **The shared demo account is locked:** visitors can't change its name, password or email, delete it or upload files.
 
 ## Trade-offs
 
@@ -74,7 +92,7 @@ Every big choice, and what it cost, is in the [decision log](docs/decisions.md).
 
 - **FSRS over SM-2:** fewer reviews for the same recall, but harder to explain.
 - **Better Auth over hand-built JWTs:** secure sign-in features fast, but less control over tokens.
-- **Free tiers everywhere:** the app costs nothing to run, but the API sleeps when idle, and AI has daily limits.
+- **Free tiers everywhere:** the app costs nothing to run, but AI has daily limits, and outside business hours the first request can take up to a minute while the API wakes up.
 
 ## Running it locally
 
@@ -104,11 +122,16 @@ Then load the extension: `chrome://extensions` → Developer mode → **Load unp
 
 Every AI and storage feature falls back gracefully without its key: the app still runs.
 
-**Checks:** `npm run lint`, `npm run format:check`, `npm run typecheck`, `npm test`. CI runs all of these, and the builds, on every push.
+**Checks:** `npm run lint`, `npm run format:check`, `npm run typecheck`, `npm test`, and `npm run e2e -w apps/web`. CI runs all of these, and the builds, on every push. The API and end-to-end tests need a test database: copy `apps/api/.env.test.example` to `apps/api/.env.test` and point it at an empty one.
 
 ## What's next
 
-- Phase 8 of the plan: suspend and bury, tags, a stats heatmap, CSV import and export, and installing the website as a phone app.
-- API tests against a real database, including "user A can't read user B's cards".
-- Error monitoring with Sentry, and an uptime check.
-- Publishing the extension to the Chrome Web Store.
+- **Chrome Web Store:** submitted and in review.
+- **Phone app:** make the website installable, with a review screen built for thumbs.
+- **More Anki features:** suspend and bury, tags, a stats heatmap, and CSV import and export.
+- **Error monitoring** with Sentry.
+
+## Credits
+
+- Dictionary data from [JMdict](https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project) by the [Electronic Dictionary Research and Development Group](https://www.edrdg.org/edrdg/licence.html), used under CC BY-SA 4.0, through [jmdict-simplified](https://github.com/scriptin/jmdict-simplified).
+- Card photos from [Unsplash](https://unsplash.com), credited on each card.
