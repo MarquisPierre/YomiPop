@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/authClient";
+import { ThemeToggle } from "./ThemeToggle";
 
 // Shows the app name, the review link and the signed-in user at the top of every page.
 export function Header() {
@@ -31,9 +32,10 @@ export function Header() {
         </>
       )}
 
-      <div className="ml-auto text-sm text-zinc-500">
+      <div className="ml-auto flex items-center gap-3 text-sm text-zinc-500">
+        <ThemeToggle />
         {isPending ? null : session ? (
-          <>
+          <span>
             <Link href="/account" className="hover:text-current">
               {session.user.name}
             </Link>{" "}
@@ -41,7 +43,7 @@ export function Header() {
             <button onClick={signOut} className="underline">
               Sign out
             </button>
-          </>
+          </span>
         ) : (
           <Link href="/sign-in" className="underline">
             Sign in
