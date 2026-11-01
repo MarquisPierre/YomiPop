@@ -3,7 +3,13 @@ import type { FastifyInstance } from "fastify";
 import type { Grade } from "ts-fsrs";
 import { auth } from "../auth.js";
 import { prisma } from "../db.js";
-import { fromSchedulerCard, scheduler, toSchedulerCard } from "../scheduler.js";
+import {
+  fromSchedulerCard,
+  restoreSchedule,
+  saveSchedule,
+  scheduler,
+  toSchedulerCard,
+} from "../scheduler.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -268,10 +274,44 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
             cardId: card.id,
             rating: request.body.rating,
             reviewedAt: now,
+            previousState: saveSchedule(card),
           },
         }),
       ]);
       return updated;
+    },
+  );
+
+  // Takes back the user's most recent answer, putting the card's schedule back as it was.
+  // Only the latest answer can be undone, so older ones can't be changed out of order.
+  app.post<{ Params: { id: string } }>(
+    "/cards/:id/undo",
+    async (request, reply) => {
+      const latest = await prisma.review.findFirst({
+        where: { card: { userId: request.userId } },
+        orderBy: [{ reviewedAt: "desc" }, { id: "desc" }],
+      });
+      if (!latest || latest.cardId !== request.params.id) {
+        return reply
+          .code(409)
+          .send({ message: "Only your last answer can be undone" });
+      }
+      if (!latest.previousState) {
+        return reply
+          .code(409)
+          .send({ message: "That answer was given before undo existed" });
+      }
+
+      const [restored] = await prisma.$transaction([
+        prisma.card.update({
+          where: { id: latest.cardId },
+          data: restoreSchedule(
+            latest.previousState as Parameters<typeof restoreSchedule>[0],
+          ),
+        }),
+        prisma.review.delete({ where: { id: latest.id } }),
+      ]);
+      return restored;
     },
   );
 }

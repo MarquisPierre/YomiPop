@@ -30,6 +30,26 @@ export function toSchedulerCard(card: Card): SchedulerCard {
   };
 }
 
+// Describes a card's schedule as it's saved before an answer, with dates as text.
+type SavedSchedule = Omit<
+  ReturnType<typeof fromSchedulerCard>,
+  "dueAt" | "lastReviewAt"
+> & { dueAt: string; lastReviewAt: string | null };
+
+// Copies a card's schedule into plain data that can be saved with a review.
+export function saveSchedule(card: Card): SavedSchedule {
+  return JSON.parse(JSON.stringify(fromSchedulerCard(toSchedulerCard(card))));
+}
+
+// Turns a saved schedule back into fields for the card, with real dates again.
+export function restoreSchedule(saved: SavedSchedule) {
+  return {
+    ...saved,
+    dueAt: new Date(saved.dueAt),
+    lastReviewAt: saved.lastReviewAt ? new Date(saved.lastReviewAt) : null,
+  };
+}
+
 // Picks out the fields to save from a card the scheduler returned.
 export function fromSchedulerCard(card: SchedulerCard) {
   return {

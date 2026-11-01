@@ -81,6 +81,13 @@ export async function getStats(): Promise<ReviewStats> {
   return response.json();
 }
 
+// Takes back the last answer for a card and returns the card as it was before.
+export async function undoReview(id: string): Promise<Card> {
+  const response = await fetch(`${CARDS_URL}/${id}/undo`, { method: "POST" });
+  checkResponse(response);
+  return response.json();
+}
+
 // Sends an answer for a card.
 export async function reviewCard(id: string, rating: Rating): Promise<void> {
   const response = await fetch(`${CARDS_URL}/${id}/review`, {
