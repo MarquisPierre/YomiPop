@@ -11,6 +11,8 @@ export interface Card {
   translation: string | null;
   deckId: string;
   dueAt: string;
+  // Counts how many times the card has been answered.
+  reps: number;
 }
 
 // Lists the answers: 1 = Again, 2 = Hard, 3 = Good, 4 = Easy.
