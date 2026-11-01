@@ -1,3 +1,5 @@
+import { Volume2 } from "lucide-react";
+
 // Finds a Japanese voice in the browser, preferring Google's, which sounds the most natural.
 function findJapaneseVoice(): SpeechSynthesisVoice | null {
   const voices = speechSynthesis
@@ -21,7 +23,7 @@ export function speak(text: string): void {
   speechSynthesis.speak(utterance);
 }
 
-// Shows a speaker button that reads the text aloud.
+// Shows a round speaker button that reads the text aloud.
 export function SpeakButton({ text, label }: { text: string; label: string }) {
   return (
     <button
@@ -29,9 +31,9 @@ export function SpeakButton({ text, label }: { text: string; label: string }) {
       onClick={() => speak(text)}
       aria-label={label}
       title={label}
-      className="rounded-md px-1 text-base text-zinc-500 hover:bg-zinc-100 hover:text-current dark:hover:bg-zinc-900"
+      className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
     >
-      🔊
+      <Volume2 className="size-4" aria-hidden="true" />
     </button>
   );
 }

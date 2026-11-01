@@ -1,5 +1,6 @@
 "use client";
 
+import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -14,14 +15,14 @@ import {
   renameDeck,
   type Deck,
 } from "@/lib/api";
-
-// Styles the small buttons on each row.
-const BUTTON_CLASS =
-  "rounded-md px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-current dark:hover:bg-zinc-900";
-
-// Styles the text boxes for deck names.
-const INPUT_CLASS =
-  "rounded-lg border border-zinc-300 bg-transparent px-3 py-1 dark:border-zinc-700";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 
 // Lists the user's decks with review links, and lets them make, rename and delete decks.
 export function DeckList() {
@@ -86,82 +87,136 @@ export function DeckList() {
     if (confirm(warning)) change(() => deleteDeck(deck.id));
   }
 
-  if (!decks) return <p className="text-zinc-500">{error ?? "Loading…"}</p>;
+  if (!decks) {
+    return <p className="text-muted-foreground">{error ?? "Loading…"}</p>;
+  }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Decks</h1>
-        <form onSubmit={create} className="flex gap-2">
-          <input
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center gap-4">
+        <h1 className="font-display text-3xl font-extrabold">Decks</h1>
+        <span className="text-sm text-muted-foreground">
+          <b className="text-hanko-text">{allDue} to review</b> across all decks
+        </span>
+        <form
+          onSubmit={create}
+          className="flex w-full gap-2 sm:ml-auto sm:w-auto"
+        >
+          <Input
             name="name"
             placeholder="New deck name"
+            aria-label="New deck name"
             required
             maxLength={50}
-            className={INPUT_CLASS}
+            className="sm:w-52"
           />
-          <button type="submit" className={BUTTON_CLASS}>
-            + New deck
-          </button>
+          <Button type="submit">
+            <Plus aria-hidden="true" />
+            New deck
+          </Button>
         </form>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+      {/* Shows each deck as a floating tile that lifts a little on hover. */}
+      <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {decks.map((deck) => (
-          <li key={deck.id} className="flex items-center gap-4 py-3">
+          <li
+            key={deck.id}
+            className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-float transition hover:-translate-y-1 hover:shadow-float-lifted"
+          >
             {deck.id === renamingId ? (
               // Shows a box to type the new name in, in place of the deck's name.
               <form
                 onSubmit={(event) => rename(event, deck)}
-                className="flex flex-1 gap-2"
+                className="flex flex-col gap-3"
               >
-                <input
+                <Input
                   name="name"
                   defaultValue={deck.name}
+                  aria-label="Deck name"
                   required
                   maxLength={50}
                   autoFocus
-                  className={`${INPUT_CLASS} flex-1`}
                 />
-                <button type="submit" className={BUTTON_CLASS}>
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRenamingId(null)}
-                  className={BUTTON_CLASS}
-                >
-                  Cancel
-                </button>
+                <div className="flex gap-2">
+                  <Button type="submit" size="sm">
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setRenamingId(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </form>
             ) : (
               <>
-                <Link
-                  href={`/cards?deck=${deck.id}`}
-                  className="flex-1 font-medium hover:underline"
-                >
-                  {deck.name}
-                </Link>
-                <span className="text-sm text-zinc-500">
-                  {deck.due} due · {deck.new} new
-                </span>
-                <Link
-                  href={`/review?deck=${deck.id}`}
-                  className="rounded-lg bg-zinc-900 px-3 py-1 text-sm text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
-                >
-                  Review
-                </Link>
-                <button
-                  onClick={() => setRenamingId(deck.id)}
-                  className={BUTTON_CLASS}
-                >
-                  Rename
-                </button>
-                <button onClick={() => remove(deck)} className={BUTTON_CLASS}>
-                  Delete
-                </button>
+                <div className="flex items-center justify-between gap-2">
+                  {/* Opens the deck's cards on the Cards page. */}
+                  <Link
+                    href={`/cards?deck=${deck.id}`}
+                    className="truncate font-display text-xl font-bold hover:text-primary"
+                  >
+                    {deck.name}
+                  </Link>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Options for ${deck.name}`}
+                      >
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => setRenamingId(deck.id)}>
+                        <Pencil />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={() => remove(deck)}
+                      >
+                        <Trash2 />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[13px] font-bold">
+                  {deck.due === 0 && deck.new === 0 ? (
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">
+                      All caught up
+                    </span>
+                  ) : (
+                    <>
+                      <span className="rounded-full bg-again px-2.5 py-1 text-again-foreground">
+                        {deck.due} due
+                      </span>
+                      <span className="rounded-full bg-easy px-2.5 py-1 text-easy-foreground">
+                        {deck.new} new
+                      </span>
+                    </>
+                  )}
+                </div>
+                {deck.due === 0 && deck.new === 0 ? (
+                  <Button asChild variant="outline" className="mt-auto">
+                    <Link href={`/cards?deck=${deck.id}`}>Browse cards</Link>
+                  </Button>
+                ) : (
+                  <Button
+                    asChild
+                    className="mt-auto bg-foreground text-background hover:bg-foreground/90"
+                  >
+                    <Link href={`/review?deck=${deck.id}`}>Review</Link>
+                  </Button>
+                )}
               </>
             )}
           </li>
@@ -169,16 +224,9 @@ export function DeckList() {
       </ul>
 
       {/* Reviews every deck together. */}
-      <div className="flex items-center gap-4 border-t border-zinc-300 pt-3 dark:border-zinc-700">
-        <span className="flex-1 font-medium">All decks</span>
-        <span className="text-sm text-zinc-500">{allDue} to review</span>
-        <Link
-          href="/review"
-          className="rounded-lg border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-        >
-          Review all
-        </Link>
-      </div>
+      <Button asChild size="lg" className="self-center shadow-float">
+        <Link href="/review">Review all decks · {allDue}</Link>
+      </Button>
     </div>
   );
 }

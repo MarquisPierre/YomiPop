@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { M_PLUS_Rounded_1c, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { Header } from "./Header";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Loads the rounded font for headings and big words. It covers Japanese too.
+const rounded = M_PLUS_Rounded_1c({
+  variable: "--font-rounded",
+  weight: ["500", "700", "800"],
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Loads the body font, which draws kanji cleanly. Only the Latin part is preloaded;
+// Japanese characters load as a page needs them.
+const notoSansJp = Noto_Sans_JP({
+  variable: "--font-noto-sans-jp",
   subsets: ["latin"],
 });
 
@@ -22,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${rounded.variable} ${notoSansJp.variable} h-full antialiased`}
       // Lets the theme script below change the page before React takes over.
       suppressHydrationWarning
     >

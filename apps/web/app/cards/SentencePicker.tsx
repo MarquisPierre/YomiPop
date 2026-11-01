@@ -1,5 +1,6 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   ApiError,
@@ -10,7 +11,7 @@ import {
 
 // Styles the picker's buttons.
 const BUTTON_CLASS =
-  "rounded-md px-3 py-1 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-current dark:hover:bg-zinc-900";
+  "inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50";
 
 // Gets AI example sentences for a card, lets the user flip through them, and hands back the one picked.
 export function SentencePicker({
@@ -57,18 +58,19 @@ export function SentencePicker({
 
   const sentence = sentences[index];
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+    <div className="flex flex-col gap-1 rounded-xl border bg-muted/40 p-3">
       {sentence && !note && (
         <>
           <p lang="ja">{sentence.japanese}</p>
-          <p className="text-sm text-zinc-500">{sentence.english}</p>
+          <p className="text-sm text-muted-foreground">{sentence.english}</p>
         </>
       )}
-      {note && <p className="text-sm text-zinc-500">{note}</p>}
+      {note && <p className="text-sm text-muted-foreground">{note}</p>}
       <div className="flex gap-1">
         {sentences.length > 0 && (
           <button type="button" onClick={next} className={BUTTON_CLASS}>
-            🔄 Another
+            <RefreshCw className="size-4" aria-hidden="true" />
+            Another
           </button>
         )}
         {sentence && !note && (

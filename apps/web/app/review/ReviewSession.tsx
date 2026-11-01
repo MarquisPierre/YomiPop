@@ -1,5 +1,6 @@
 "use client";
 
+import { Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +15,7 @@ import {
   type Rating,
   type ReviewStats as Stats,
 } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 import { ProgressBar } from "./ProgressBar";
 import { CardImage } from "./CardImage";
 import { ReviewStats } from "./ReviewStats";
@@ -43,12 +45,12 @@ function saveChoice(key: string, on: boolean): void {
   }
 }
 
-// Lists the answer buttons in order.
-const ANSWERS: { rating: Rating; label: string }[] = [
-  { rating: 1, label: "Again" },
-  { rating: 2, label: "Hard" },
-  { rating: 3, label: "Good" },
-  { rating: 4, label: "Easy" },
+// Lists the answer buttons in order, each with its own soft colour from the theme.
+const ANSWERS: { rating: Rating; label: string; className: string }[] = [
+  { rating: 1, label: "Again", className: "bg-again text-again-foreground" },
+  { rating: 2, label: "Hard", className: "bg-hard text-hard-foreground" },
+  { rating: 3, label: "Good", className: "bg-good text-good-foreground" },
+  { rating: 4, label: "Easy", className: "bg-easy text-easy-foreground" },
 ];
 
 // Shows due cards one at a time and sends each answer to the API.
@@ -185,113 +187,166 @@ export function ReviewSession() {
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
-  if (error) return <p className="text-red-500">{error}</p>;
-  if (!cards) return <p className="text-zinc-500">Loading…</p>;
+  if (error) return <p className="text-destructive">{error}</p>;
+  if (!cards) return <p className="text-muted-foreground">Loading…</p>;
 
   const undoButton = answered.length > 0 && (
-    <button
-      onClick={undo}
-      className="text-sm text-zinc-500 underline hover:text-current"
-    >
-      ↶ Undo <span className="text-xs opacity-60">Z</span>
-    </button>
+    <Button variant="ghost" size="sm" onClick={undo}>
+      <Undo2 aria-hidden="true" />
+      Undo <span className="text-xs opacity-60">Z</span>
+    </Button>
+  );
+
+  // Shows the deck being reviewed as a small red pill.
+  const deckPill = (
+    <span className="rounded-full bg-hanko-soft px-3 py-1 text-[13px] font-bold text-hanko-text">
+      {deckLabel}
+    </span>
   );
 
   if (!card) {
     return (
-      <div className="flex flex-col items-center gap-4 text-center">
-        <p className="font-medium">{deckLabel}</p>
-        <ReviewStats stats={stats} />
-        <p className="text-2xl font-semibold">All done for now</p>
+      <div className="flex w-full max-w-md flex-col items-center gap-5 text-center">
+        <div className="flex w-full flex-wrap items-center gap-3">
+          {deckPill}
+          <ReviewStats stats={stats} />
+        </div>
+        {/* Shows a finished card, floating like the others. */}
+        <div className="flex w-full flex-col items-center gap-3 rounded-2xl border bg-card px-8 py-12 shadow-float">
+          <span
+            lang="ja"
+            aria-hidden="true"
+            className="font-display text-6xl font-extrabold text-primary"
+          >
+            済
+          </span>
+          <p className="font-display text-2xl font-bold">All done for now</p>
+          <p className="text-sm text-muted-foreground">
+            Come back later for the next ones.
+          </p>
+        </div>
         {undoButton}
-        {notice && <p className="text-sm text-red-500">{notice}</p>}
-        <button
-          onClick={loadCards}
-          className="rounded-lg border border-zinc-300 px-4 py-2 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-        >
-          Check again
-        </button>
-        <Link href="/decks" className="text-sm text-zinc-500 underline">
-          Back to decks
-        </Link>
+        {notice && <p className="text-sm text-destructive">{notice}</p>}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadCards}>
+            Check again
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href="/decks">Back to decks</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex w-full max-w-md flex-col items-center gap-4">
-      <div className="flex w-full flex-wrap items-center justify-between gap-2">
+    <div className="flex w-full max-w-xl flex-col items-center gap-4">
+      <div className="flex w-full flex-wrap items-center gap-3">
+        {deckPill}
         <ReviewStats stats={stats} />
-        <label className="flex items-center gap-2 text-sm text-zinc-500">
-          <input
-            type="checkbox"
-            checked={showTranslation}
-            onChange={toggleTranslation}
-          />
-          Show translation
-        </label>
-        <label className="flex items-center gap-2 text-sm text-zinc-500">
-          <input type="checkbox" checked={autoPlay} onChange={toggleAutoPlay} />
-          Auto-play
-        </label>
       </div>
-      <p className="w-full font-medium">{deckLabel}</p>
       <ProgressBar
         done={answered.length}
         total={answered.length + cards.length}
       />
-      <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-zinc-200 p-8 text-center dark:border-zinc-800">
-        <p className="text-sm text-zinc-500">{cards.length} left</p>
 
-        <p lang="ja" className="text-5xl font-semibold">
-          {card.word}
-        </p>
-
-        {revealed ? (
-          <>
-            <p lang="ja" className="text-xl text-zinc-500">
-              {card.reading}
-              <span className="ml-2">
-                <SpeakButton text={spokenWord} label="Read the word (W)" />
-              </span>
-            </p>
-            {card.image && <CardImage image={card.image} />}
-            {card.sentence && (
-              <Sentence
-                sentence={card.sentence}
-                word={card.word}
-                translation={showTranslation ? card.translation : null}
-              />
-            )}
-            <ol className="list-decimal space-y-1 pl-6 text-left">
-              {card.meanings.map((meaning) => (
-                <li key={meaning}>{meaning}</li>
-              ))}
-            </ol>
-            <div className="grid w-full grid-cols-4 gap-2">
-              {ANSWERS.map(({ rating, label }) => (
-                <button
-                  key={rating}
-                  onClick={() => answer(rating)}
-                  className="rounded-lg border border-zinc-300 py-2 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                >
-                  {label}
-                  <span className="block text-xs text-zinc-500">{rating}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <button
-            onClick={reveal}
-            className="rounded-lg bg-zinc-900 px-6 py-2 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+      {/* Stacks two cards behind the current one, tilted a little, like a real pile. */}
+      <div className="relative mt-2 mb-4 w-full">
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-4 top-4 -bottom-3 rotate-[2.4deg] rounded-2xl border bg-stack-2"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-2 top-2 -bottom-1.5 -rotate-[1.6deg] rounded-2xl border bg-stack-1"
+        />
+        {/* Flips the card over when the answer shows; the key replays the flip each time. */}
+        <div
+          key={`${card.id}-${revealed}`}
+          className={`relative flex min-h-[22rem] flex-col items-center gap-3 rounded-2xl border bg-card px-6 pt-6 pb-7 text-center shadow-float sm:px-10 ${
+            revealed ? "motion-safe:animate-flip" : ""
+          }`}
+        >
+          <span className="self-end text-xs text-muted-foreground">
+            {cards.length} left
+          </span>
+          <p
+            lang="ja"
+            className="font-display text-6xl leading-none font-extrabold sm:text-7xl"
           >
-            Show answer <span className="text-xs opacity-60">Space</span>
-          </button>
-        )}
+            {card.word}
+          </p>
+
+          {revealed ? (
+            <>
+              <p
+                lang="ja"
+                className="flex items-center gap-2 text-xl text-muted-foreground"
+              >
+                {card.reading}
+                <SpeakButton text={spokenWord} label="Read the word (W)" />
+              </p>
+              {card.image && <CardImage image={card.image} />}
+              {card.sentence && (
+                <Sentence
+                  sentence={card.sentence}
+                  word={card.word}
+                  translation={showTranslation ? card.translation : null}
+                />
+              )}
+              <ol className="list-decimal space-y-1 pl-6 text-left">
+                {card.meanings.map((meaning) => (
+                  <li key={meaning}>{meaning}</li>
+                ))}
+              </ol>
+            </>
+          ) : (
+            <Button size="lg" className="mt-auto" onClick={reveal}>
+              Show answer <span className="text-xs opacity-70">Space</span>
+            </Button>
+          )}
+        </div>
       </div>
-      {undoButton}
-      {notice && <p className="text-sm text-red-500">{notice}</p>}
+
+      {revealed && (
+        <div className="mt-2 grid w-full grid-cols-4 gap-2 sm:gap-3">
+          {ANSWERS.map(({ rating, label, className }) => (
+            <button
+              key={rating}
+              onClick={() => answer(rating)}
+              className={`h-14 cursor-pointer rounded-full font-bold transition-transform hover:-translate-y-0.5 ${className}`}
+            >
+              {label} <span className="font-medium opacity-70">{rating}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        Space reveal · 1–4 answer · W/S listen · Z undo
+      </p>
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showTranslation}
+            onChange={toggleTranslation}
+            className="accent-primary"
+          />
+          Show translation
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={autoPlay}
+            onChange={toggleAutoPlay}
+            className="accent-primary"
+          />
+          Auto-play
+        </label>
+        {undoButton}
+      </div>
+      {notice && <p className="text-sm text-destructive">{notice}</p>}
     </div>
   );
 }
