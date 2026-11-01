@@ -10,6 +10,8 @@ export interface DictionaryEntry {
 export interface WordMatch {
   entry: DictionaryEntry;
   reasons: string[];
+  // Filled in by the background once it knows the user's saved cards.
+  saved?: boolean;
 }
 
 // Describes one group of related meanings.

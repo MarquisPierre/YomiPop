@@ -24,6 +24,7 @@ const STYLES = `
   .word { font-size: 22px; font-weight: 600; }
   .reasons { font-size: 12px; color: #9fb3c8; }
   .reading { margin-left: 8px; color: #9fb3c8; }
+  .saved { margin-left: 8px; color: #7ee787; font-size: 12px; }
   .meanings { margin: 6px 0 0; padding-left: 18px; }
   .entry + .entry { margin-top: 10px; padding-top: 10px; border-top: 1px solid #3a4048; }
   .status { margin-top: 8px; padding-top: 6px; border-top: 1px solid #3a4048; font-size: 12px; color: #9fb3c8; }
@@ -83,9 +84,9 @@ export function getShownEntries(): DictionaryEntry[] {
   return popup && !popup.hidden ? shownEntries : [];
 }
 
-// Builds the number, word, reading, conjugations and meanings for one match.
+// Builds the number, word, reading, saved badge, conjugations and meanings for one match.
 function renderMatch(
-  { entry, reasons }: WordMatch,
+  { entry, reasons, saved }: WordMatch,
   number: number | null,
 ): HTMLDivElement {
   const element = document.createElement("div");
@@ -109,6 +110,13 @@ function renderMatch(
   reading.textContent = entry.kanji.length > 0 ? (entry.readings[0] ?? "") : "";
 
   element.append(word, reading);
+
+  if (saved) {
+    const badge = document.createElement("span");
+    badge.className = "saved";
+    badge.textContent = "✓ Saved";
+    element.append(badge);
+  }
 
   if (reasons.length > 0) {
     const conjugations = document.createElement("div");
