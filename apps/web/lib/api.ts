@@ -41,6 +41,32 @@ export type CardChanges = Partial<
   image?: FoundImage;
 };
 
+// Describes an AI-made example sentence, as the API sends it.
+export interface ExampleSentence {
+  japanese: string;
+  reading: string;
+  english: string;
+}
+
+// Gets AI example sentences for a card's word. Fresh asks for new ones instead of saved ones.
+export async function getAiSentences(
+  card: Card,
+  fresh: boolean,
+): Promise<ExampleSentence[]> {
+  const response = await fetch("/api/ai/sentences", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      word: card.word,
+      reading: card.reading,
+      meaning: card.meanings.slice(0, 2).join("; ").slice(0, 200),
+      fresh,
+    }),
+  });
+  await checkResponseWithReason(response);
+  return (await response.json()).sentences;
+}
+
 // Describes a picture found for a card, as the API sends it.
 export interface FoundImage {
   url: string;
