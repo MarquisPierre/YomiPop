@@ -35,6 +35,11 @@ const STYLES = `
   .unchosen { color: #6e7781; }
   /* Lets the pop-up take clicks while picking, and only then. */
   .popup.picking { pointer-events: auto; }
+  /* Shows the builder can be dragged by its empty spots, but keeps normal cursors on its buttons and meanings. */
+  .popup.picking { cursor: move; }
+  .popup.picking button, .popup.picking li { cursor: pointer; }
+  /* Keeps the builder within the window's height, scrolling inside it when the picture makes it taller. */
+  .popup.picking { max-height: calc(100vh - 16px); overflow-y: auto; }
   /* Shows each meaning can be clicked. */
   .picker li { cursor: pointer; border-radius: 4px; padding: 1px 4px; }
   .picker li:hover { background: #2d333b; }
@@ -79,6 +84,7 @@ function createPopup(): HTMLDivElement {
 
   shadow.append(style, element);
   document.documentElement.append(host);
+  makeDraggable(element);
   return element;
 }
 
@@ -412,4 +418,43 @@ function positionPopup(element: HTMLDivElement, x: number, y: number): void {
 
   element.style.left = `${Math.max(0, left)}px`;
   element.style.top = `${Math.max(0, top)}px`;
+}
+
+// Lets the user drag the builder or an explanation by any empty spot, e.g. when it covers
+// the text they're reading or runs off the screen.
+function makeDraggable(element: HTMLDivElement): void {
+  element.addEventListener("pointerdown", (event) => {
+    // Only drags while it takes clicks, and never from a button or meaning, so those still work.
+    if (!element.classList.contains("picking")) return;
+    if ((event.target as Element).closest("button, li")) return;
+    // Stops the drag from selecting the page's text or opening the ✨ Explain button.
+    event.preventDefault();
+
+    // Remembers where in the box it was grabbed, so it doesn't jump to the cursor.
+    const box = element.getBoundingClientRect();
+    const grabX = event.clientX - box.left;
+    const grabY = event.clientY - box.top;
+    // Keeps getting the moves even when the cursor races ahead of the box.
+    element.setPointerCapture(event.pointerId);
+
+    const move = (moveEvent: PointerEvent) => {
+      // Keeps at least 40px of the box on screen, so it can't be lost off the edge.
+      const left = Math.min(
+        Math.max(moveEvent.clientX - grabX, 40 - box.width),
+        window.innerWidth - 40,
+      );
+      const top = Math.min(
+        Math.max(moveEvent.clientY - grabY, 0),
+        window.innerHeight - 40,
+      );
+      element.style.left = `${left}px`;
+      element.style.top = `${top}px`;
+    };
+    element.addEventListener("pointermove", move);
+    element.addEventListener(
+      "pointerup",
+      () => element.removeEventListener("pointermove", move),
+      { once: true },
+    );
+  });
 }
