@@ -193,7 +193,7 @@ export function ReviewSession() {
   const undoButton = answered.length > 0 && (
     <Button variant="ghost" size="sm" onClick={undo}>
       <Undo2 aria-hidden="true" />
-      Undo <span className="text-xs opacity-60">Z</span>
+      Undo <span className="text-xs font-normal">Z</span>
     </Button>
   );
 
@@ -302,7 +302,7 @@ export function ReviewSession() {
             </>
           ) : (
             <Button size="lg" className="mt-auto" onClick={reveal}>
-              Show answer <span className="text-xs opacity-70">Space</span>
+              Show answer <span className="text-xs font-normal">Space</span>
             </Button>
           )}
         </div>
@@ -316,7 +316,7 @@ export function ReviewSession() {
               onClick={() => answer(rating)}
               className={`h-14 cursor-pointer rounded-full font-bold transition-transform hover:-translate-y-0.5 ${className}`}
             >
-              {label} <span className="font-medium opacity-70">{rating}</span>
+              {label} <span className="font-normal">{rating}</span>
             </button>
           ))}
         </div>

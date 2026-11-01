@@ -385,17 +385,16 @@ export function CardList() {
           ) : (
             <li
               key={card.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setPreviewId(card.id)}
-              onKeyDown={(event) =>
-                event.key === "Enter" && setPreviewId(card.id)
-              }
-              className="group flex cursor-pointer flex-col gap-3 rounded-2xl border bg-card p-5 shadow-float transition hover:-translate-y-1 hover:shadow-float-lifted focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              className="group relative rounded-2xl border bg-card shadow-float transition hover:-translate-y-1 hover:shadow-float-lifted"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p
+              {/* Opens the card's preview. Edit and Delete sit beside it, not inside, so each is its own control. */}
+              <button
+                type="button"
+                onClick={() => setPreviewId(card.id)}
+                className="flex size-full cursor-pointer flex-col gap-3 rounded-2xl p-5 pr-20 text-left focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              >
+                <span className="block min-w-0">
+                  <span
                     lang="ja"
                     className="flex items-center gap-2 font-display text-2xl font-extrabold"
                   >
@@ -406,61 +405,62 @@ export function CardList() {
                         aria-label="Has a picture"
                       />
                     )}
-                  </p>
-                  <p lang="ja" className="text-sm text-muted-foreground">
+                  </span>
+                  <span
+                    lang="ja"
+                    className="block text-sm text-muted-foreground"
+                  >
                     {card.reading}
-                  </p>
-                </div>
-                {/* Shows Edit and Delete when the card is hovered or tabbed to. */}
-                <div className="flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Edit ${card.word}`}
-                    onClick={(event) => {
-                      // Keeps the click from also opening the preview.
-                      event.stopPropagation();
-                      startEditing(card.id);
-                    }}
+                  </span>
+                </span>
+                <span className="line-clamp-2 text-sm">
+                  {card.meanings.join("; ")}
+                </span>
+                {card.sentence && (
+                  <span
+                    lang="ja"
+                    className="block truncate text-sm text-muted-foreground"
                   >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Delete ${card.word}`}
-                    className="hover:text-destructive"
-                    onClick={(event) => {
-                      // Keeps the click from also opening the preview.
-                      event.stopPropagation();
-                      remove(card);
-                    }}
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-              </div>
-              <p className="line-clamp-2 text-sm">{card.meanings.join("; ")}</p>
-              {card.sentence && (
-                <p lang="ja" className="truncate text-sm text-muted-foreground">
-                  {card.sentence}
-                </p>
-              )}
-              <div className="mt-auto flex flex-wrap gap-2 text-xs font-bold">
-                {deckFilter === "all" && (
-                  <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">
-                    {deckName(card.deckId)}
+                    {card.sentence}
                   </span>
                 )}
-                <span
-                  className={`rounded-full px-2.5 py-1 ${
-                    describeDue(card.dueAt) === "due now"
-                      ? "bg-again text-again-foreground"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {describeDue(card.dueAt)}
+                <span className="mt-auto flex flex-wrap gap-2 text-xs font-bold">
+                  {deckFilter === "all" && (
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">
+                      {deckName(card.deckId)}
+                    </span>
+                  )}
+                  <span
+                    className={`rounded-full px-2.5 py-1 ${
+                      describeDue(card.dueAt) === "due now"
+                        ? "bg-again text-again-foreground"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {describeDue(card.dueAt)}
+                  </span>
                 </span>
+              </button>
+
+              {/* Shows Edit and Delete in the top corner when the card is hovered or tabbed to. */}
+              <div className="absolute top-4 right-4 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Edit ${card.word}`}
+                  onClick={() => startEditing(card.id)}
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Delete ${card.word}`}
+                  className="hover:text-destructive"
+                  onClick={() => remove(card)}
+                >
+                  <Trash2 />
+                </Button>
               </div>
             </li>
           ),

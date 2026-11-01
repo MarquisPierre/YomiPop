@@ -1,4 +1,7 @@
 dist
 dist-prod
 .next
+.next-e2e
+test-results
+playwright-report
 package-lock.json

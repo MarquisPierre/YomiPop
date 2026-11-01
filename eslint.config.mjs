@@ -8,6 +8,7 @@ export default defineConfig([
     "**/dist/**",
     "**/dist-prod/**",
     "**/.next/**",
+    "**/.next-e2e/**",
     "apps/web/**",
   ]),
   js.configs.recommended,
