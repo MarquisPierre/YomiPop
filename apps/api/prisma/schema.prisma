@@ -9,15 +9,16 @@ datasource db {
 
 // Stores one flashcard and where it is in the review schedule.
 model Card {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  word      String
-  reading   String
-  meanings  String[]
-  entryId   String?
-  sentence  String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  word        String
+  reading     String
+  meanings    String[]
+  entryId     String?
+  sentence    String?
+  translation String?
+  createdAt   DateTime @default(now())
 
   dueAt          DateTime  @default(now())
   lastReviewAt   DateTime?

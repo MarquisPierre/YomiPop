@@ -14,6 +14,27 @@ import {
 import { ReviewStats } from "./ReviewStats";
 import { Sentence } from "./Sentence";
 
+// Names the browser storage slot that remembers whether translations are shown.
+const TRANSLATION_KEY = "yomipop.showTranslation";
+
+// Reads whether translations are shown, defaulting to yes. Storage can be blocked, so failures count as yes.
+function loadShowTranslation(): boolean {
+  try {
+    return localStorage.getItem(TRANSLATION_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+// Remembers whether translations are shown.
+function saveShowTranslation(show: boolean): void {
+  try {
+    localStorage.setItem(TRANSLATION_KEY, show ? "on" : "off");
+  } catch {
+    // Storage is blocked, so the choice lasts until the page closes.
+  }
+}
+
 // Lists the answer buttons in order.
 const ANSWERS: { rating: Rating; label: string }[] = [
   { rating: 1, label: "Again" },
@@ -29,6 +50,13 @@ export function ReviewSession() {
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [showTranslation, setShowTranslation] = useState(loadShowTranslation);
+
+  // Turns translations on or off and remembers the choice.
+  function toggleTranslation() {
+    saveShowTranslation(!showTranslation);
+    setShowTranslation(!showTranslation);
+  }
 
   // Refreshes the numbers above the review. They're extra, so failures are ignored.
   function loadStats() {
@@ -97,7 +125,17 @@ export function ReviewSession() {
 
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-4">
-      <ReviewStats stats={stats} />
+      <div className="flex w-full flex-wrap items-center justify-between gap-2">
+        <ReviewStats stats={stats} />
+        <label className="flex items-center gap-2 text-sm text-zinc-500">
+          <input
+            type="checkbox"
+            checked={showTranslation}
+            onChange={toggleTranslation}
+          />
+          Show translation
+        </label>
+      </div>
       <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-zinc-200 p-8 text-center dark:border-zinc-800">
         <p className="text-sm text-zinc-500">{cards.length} left</p>
 
@@ -111,7 +149,11 @@ export function ReviewSession() {
               {card.reading}
             </p>
             {card.sentence && (
-              <Sentence sentence={card.sentence} word={card.word} />
+              <Sentence
+                sentence={card.sentence}
+                word={card.word}
+                translation={showTranslation ? card.translation : null}
+              />
             )}
             <ol className="list-decimal space-y-1 pl-6 text-left">
               {card.meanings.map((meaning) => (

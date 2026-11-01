@@ -8,27 +8,32 @@ function findWord(sentence: string, word: string): [number, number] | null {
   return null;
 }
 
-// Shows the sentence the card was saved from, with the word in bold.
+// Shows the sentence the card was saved from, with the word in bold, and its translation if wanted.
 export function Sentence({
   sentence,
   word,
+  translation,
 }: {
   sentence: string;
   word: string;
+  translation: string | null;
 }) {
   const found = findWord(sentence, word);
 
   return (
-    <p lang="ja" className="text-lg">
-      {found ? (
-        <>
-          {sentence.slice(0, found[0])}
-          <strong>{sentence.slice(found[0], found[0] + found[1])}</strong>
-          {sentence.slice(found[0] + found[1])}
-        </>
-      ) : (
-        sentence
-      )}
-    </p>
+    <div>
+      <p lang="ja" className="text-lg">
+        {found ? (
+          <>
+            {sentence.slice(0, found[0])}
+            <strong>{sentence.slice(found[0], found[0] + found[1])}</strong>
+            {sentence.slice(found[0] + found[1])}
+          </>
+        ) : (
+          sentence
+        )}
+      </p>
+      {translation && <p className="text-sm text-zinc-500">{translation}</p>}
+    </div>
   );
 }

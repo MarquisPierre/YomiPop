@@ -27,13 +27,17 @@ function describeDue(dueAt: string): string {
   return `in ${Math.round(minutes / (60 * 24))} days`;
 }
 
-// Checks whether the card's word, reading, meanings or sentence contain the search text.
+// Checks whether the card's word, reading, meanings, sentence or translation contain the search text.
 function matchesSearch(card: Card, search: string): boolean {
   const text = search.trim().toLowerCase();
   if (!text) return true;
-  return [card.word, card.reading, ...card.meanings, card.sentence ?? ""].some(
-    (value) => value.toLowerCase().includes(text),
-  );
+  return [
+    card.word,
+    card.reading,
+    ...card.meanings,
+    card.sentence ?? "",
+    card.translation ?? "",
+  ].some((value) => value.toLowerCase().includes(text));
 }
 
 // Lists the user's cards with search, edit and delete.
@@ -85,6 +89,7 @@ export function CardList() {
         reading: String(form.get("reading")).trim(),
         meanings,
         sentence: String(form.get("sentence")).trim() || null,
+        translation: String(form.get("translation")).trim() || null,
       });
       setCards(
         (current) =>
@@ -159,6 +164,13 @@ export function CardList() {
                   lang="ja"
                   className={`${INPUT_CLASS} sm:col-span-3`}
                 />
+                <input
+                  name="translation"
+                  defaultValue={card.translation ?? ""}
+                  placeholder="Translation"
+                  maxLength={500}
+                  className={`${INPUT_CLASS} sm:col-span-3`}
+                />
                 <div className="flex gap-2 sm:col-span-3 sm:justify-end">
                   <button
                     type="button"
@@ -194,6 +206,11 @@ export function CardList() {
                     className="block truncate text-sm text-zinc-500"
                   >
                     {card.sentence}
+                  </span>
+                )}
+                {card.translation && (
+                  <span className="block truncate text-sm text-zinc-500">
+                    {card.translation}
                   </span>
                 )}
               </span>

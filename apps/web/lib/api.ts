@@ -8,6 +8,7 @@ export interface Card {
   reading: string;
   meanings: string[];
   sentence: string | null;
+  translation: string | null;
   dueAt: string;
 }
 
@@ -25,7 +26,7 @@ function checkResponse(response: Response): void {
 
 // Describes the parts of a card the user can edit.
 export type CardChanges = Partial<
-  Pick<Card, "word" | "reading" | "meanings" | "sentence">
+  Pick<Card, "word" | "reading" | "meanings" | "sentence" | "translation">
 >;
 
 // Fetches all of the user's cards, newest first.

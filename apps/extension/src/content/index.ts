@@ -3,6 +3,7 @@ import type { AddCardMessage, AddCardResult, LookupMessage } from "../messages";
 import { getSettings, onSettingsChanged, type Trigger } from "../settings";
 import { getTextAtPoint } from "./getTextAtPoint";
 import { getShownEntries, hidePopup, setPopupStatus, showPopup } from "./popup";
+import { translateSentence } from "./translate";
 
 // Sets how long the cursor must rest on a word in hover mode.
 const HOVER_DELAY = 150;
@@ -83,10 +84,12 @@ async function saveShownEntry(index: number): Promise<void> {
 
   const word = entry.kanji[0] ?? entry.readings[0] ?? "";
   setPopupStatus(`Saving ${word}…`);
+  const sentence = shownSentence;
   const message: AddCardMessage = {
     type: "addCard",
     entry,
-    sentence: shownSentence,
+    sentence,
+    translation: await translateSentence(sentence),
   };
   const result: AddCardResult = await chrome.runtime.sendMessage(message);
   setPopupStatus(SAVE_RESULTS[result](word));

@@ -6,11 +6,12 @@ export interface LookupMessage {
   text: string;
 }
 
-// Asks the background to save an entry as a flashcard, with the sentence it was found in.
+// Asks the background to save an entry as a flashcard, with the sentence it was found in and its translation.
 export interface AddCardMessage {
   type: "addCard";
   entry: DictionaryEntry;
   sentence: string;
+  translation: string | null;
 }
 
 // Lists every message the background understands.
