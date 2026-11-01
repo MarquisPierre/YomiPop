@@ -59,6 +59,24 @@ export async function getDueCards(): Promise<Card[]> {
   return response.json();
 }
 
+// Describes the numbers shown above the review.
+export interface ReviewStats {
+  dueNow: number;
+  laterToday: number;
+  reviewedToday: number;
+  streak: number;
+}
+
+// Fetches the review stats, counting days in the browser's time zone.
+export async function getStats(): Promise<ReviewStats> {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const response = await fetch(
+    `${CARDS_URL}/stats?timeZone=${encodeURIComponent(timeZone)}`,
+  );
+  checkResponse(response);
+  return response.json();
+}
+
 // Sends an answer for a card.
 export async function reviewCard(id: string, rating: Rating): Promise<void> {
   const response = await fetch(`${CARDS_URL}/${id}/review`, {
