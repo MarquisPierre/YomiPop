@@ -74,3 +74,20 @@ jobs:
         with:
           name: playwright-report
           path: apps/web/playwright-report
+
+      # Zips the store build from inside the folder, so manifest.json sits at the top
+      # of the zip, where the Chrome Web Store looks for it. Only on main, since
+      # that's the version that gets published.
+      - name: Zip the extension for the Chrome Web Store
+        if: github.ref == 'refs/heads/main'
+        working-directory: apps/extension/dist-prod
+        run: zip -r ../yomipop-extension.zip .
+
+      # Keeps the zip on the run's page for 30 days, to download and upload to the store.
+      - name: Save the store zip
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yomipop-extension
+          path: apps/extension/yomipop-extension.zip
+          retention-days: 30
