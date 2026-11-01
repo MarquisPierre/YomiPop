@@ -18,6 +18,7 @@ const SAVE_RESULTS: Record<AddCardResult, (word: string) => string> = {
 let trigger: Trigger = "shift";
 let latestLookup = 0;
 let hoverTimer: number | undefined;
+let shownSentence = "";
 
 getSettings().then((settings) => (trigger = settings.trigger));
 onSettingsChanged((settings) => (trigger = settings.trigger));
@@ -25,18 +26,22 @@ onSettingsChanged((settings) => (trigger = settings.trigger));
 // Shows the pop-up for the word at the point, or hides it if there's none.
 async function lookUp(x: number, y: number): Promise<void> {
   const lookup = ++latestLookup;
-  const text = getTextAtPoint(x, y);
-  if (!text) {
+  const found = getTextAtPoint(x, y);
+  if (!found) {
     hidePopup();
     return;
   }
 
-  const message: LookupMessage = { type: "lookup", text };
+  const message: LookupMessage = { type: "lookup", text: found.text };
   const matches: WordMatch[] = await chrome.runtime.sendMessage(message);
   if (lookup !== latestLookup) return;
 
-  if (matches.length > 0) showPopup(matches, x, y);
-  else hidePopup();
+  if (matches.length > 0) {
+    showPopup(matches, x, y);
+    shownSentence = found.sentence;
+  } else {
+    hidePopup();
+  }
 }
 
 // Checks whether the extension reloaded and left this copy of the script behind.
@@ -78,7 +83,11 @@ async function saveShownEntry(index: number): Promise<void> {
 
   const word = entry.kanji[0] ?? entry.readings[0] ?? "";
   setPopupStatus(`Saving ${word}…`);
-  const message: AddCardMessage = { type: "addCard", entry };
+  const message: AddCardMessage = {
+    type: "addCard",
+    entry,
+    sentence: shownSentence,
+  };
   const result: AddCardResult = await chrome.runtime.sendMessage(message);
   setPopupStatus(SAVE_RESULTS[result](word));
 }

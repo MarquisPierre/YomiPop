@@ -4,8 +4,11 @@ import type { AddCardResult } from "../messages";
 import { getSessionToken } from "../session";
 import { forgetSavedEntries, markSaved } from "./savedEntries";
 
-// Saves the entry as a flashcard through the API, as the logged-in user.
-export async function addCard(entry: DictionaryEntry): Promise<AddCardResult> {
+// Saves the entry and its sentence as a flashcard through the API, as the logged-in user.
+export async function addCard(
+  entry: DictionaryEntry,
+  sentence: string,
+): Promise<AddCardResult> {
   const token = await getSessionToken();
   if (!token) return "loggedOut";
 
@@ -14,6 +17,7 @@ export async function addCard(entry: DictionaryEntry): Promise<AddCardResult> {
     reading: entry.kanji.length > 0 ? (entry.readings[0] ?? "") : "",
     meanings: entry.senses.map((sense) => sense.meanings.join("; ")),
     entryId: entry.id,
+    sentence: sentence.slice(0, 300) || null,
   };
 
   try {

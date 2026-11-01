@@ -1,8 +1,20 @@
 // Limits how much text is read past the cursor.
 const MAX_TEXT_LENGTH = 20;
 
-// Returns the text starting at the character under the point, or null.
-export function getTextAtPoint(x: number, y: number): string | null {
+// Limits how far the sentence reaches on each side of the cursor.
+const MAX_SENTENCE_REACH = 75;
+
+// Matches the characters that end a sentence.
+const SENTENCE_END = /[。！？!?\n]/;
+
+// Describes the text under the point and the sentence around it.
+export interface TextAtPoint {
+  text: string;
+  sentence: string;
+}
+
+// Returns the text starting at the character under the point and its sentence, or null.
+export function getTextAtPoint(x: number, y: number): TextAtPoint | null {
   const position = document.caretPositionFromPoint(x, y);
   if (!position || !(position.offsetNode instanceof Text)) return null;
 
@@ -15,7 +27,25 @@ export function getTextAtPoint(x: number, y: number): string | null {
     if (offset < 0 || !isPointOnCharacter(node, offset, x, y)) return null;
   }
 
-  return node.data.slice(offset, offset + MAX_TEXT_LENGTH);
+  return {
+    text: node.data.slice(offset, offset + MAX_TEXT_LENGTH),
+    sentence: getSentence(node.data, offset),
+  };
+}
+
+// Returns the sentence around the offset, stopping at sentence ends or the reach limit.
+function getSentence(data: string, offset: number): string {
+  let start = offset;
+  const earliest = Math.max(0, offset - MAX_SENTENCE_REACH);
+  while (start > earliest && !SENTENCE_END.test(data[start - 1] ?? "")) start--;
+
+  let end = offset;
+  const latest = Math.min(data.length, offset + MAX_SENTENCE_REACH);
+  while (end < latest && !SENTENCE_END.test(data[end] ?? "")) end++;
+  // Keeps the 。 or ！ that ends the sentence, but not a line break.
+  if (/[。！？!?]/.test(data[end] ?? "")) end++;
+
+  return data.slice(start, end).trim();
 }
 
 // Checks whether the point is inside the character at the given offset.
