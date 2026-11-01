@@ -46,8 +46,25 @@ export interface AiMessage {
 export type AiResult<T> =
   { ok: true; items: T[] } | { ok: false; message: string };
 
+// Describes a sentence's explanation, as the API sends it.
+export interface Explanation {
+  translation: string;
+  notes: { part: string; explanation: string }[];
+}
+
+// Asks the background to translate a highlighted sentence and explain its grammar.
+export interface ExplainMessage {
+  type: "explain";
+  sentence: string;
+}
+
+// Describes how an explanation request went.
+export type ExplainResult =
+  { ok: true; explanation: Explanation } | { ok: false; message: string };
+
 // Lists every message the background understands.
-export type Message = LookupMessage | AddCardMessage | AiMessage;
+export type Message =
+  LookupMessage | AddCardMessage | AiMessage | ExplainMessage;
 
 // Lists the ways saving a card can end.
 export type AddCardResult =

@@ -1,5 +1,5 @@
 import type { DictionaryEntry, WordMatch } from "../dictionary/types";
-import type { ExampleSentence, FoundImage } from "../messages";
+import type { ExampleSentence, Explanation, FoundImage } from "../messages";
 
 // Sets the gap between the cursor and the pop-up.
 const CURSOR_OFFSET = 12;
@@ -51,6 +51,11 @@ const STYLES = `
   /* Fits the picture to the pop-up's width without making it too tall. */
   .photo { display: block; width: 100%; max-height: 160px; margin-top: 4px; border-radius: 4px; object-fit: cover; }
   .credit { color: #6e7781; font-size: 11px; }
+  /* Shows the small ✨ Explain button next to selected Japanese text. */
+  .explain-button { position: fixed; z-index: 2147483647; padding: 2px 8px; border: none; border-radius: 6px; background: #1f2328; color: #f0f3f6; font: 12px system-ui, sans-serif; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); cursor: pointer; }
+  .translation { margin-top: 6px; }
+  .notes { margin: 6px 0 0; padding-left: 18px; }
+  .part { font-weight: 600; }
 `;
 
 let popup: HTMLDivElement | null = null;
@@ -308,6 +313,69 @@ function renderMatch(
 
   element.append(meanings);
   return element;
+}
+
+let explainButton: HTMLButtonElement | null = null;
+
+// Shows the ✨ Explain button just below the end of the selection.
+export function showExplainButton(rect: DOMRect, onClick: () => void): void {
+  popup ??= createPopup();
+  if (!explainButton) {
+    explainButton = document.createElement("button");
+    explainButton.className = "explain-button";
+    explainButton.textContent = "✨ Explain";
+    // Keeps the selection from clearing when the button is pressed.
+    explainButton.addEventListener("mousedown", (event) =>
+      event.preventDefault(),
+    );
+    popup.after(explainButton);
+  }
+  explainButton.onclick = onClick;
+  explainButton.style.left = `${Math.min(rect.right, window.innerWidth - 90)}px`;
+  explainButton.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 30)}px`;
+  explainButton.hidden = false;
+}
+
+// Hides the ✨ Explain button.
+export function hideExplainButton(): void {
+  if (explainButton) explainButton.hidden = true;
+}
+
+// Shows a sentence's translation and grammar notes below the selection, or a note while it loads or fails.
+export function showExplanation(
+  sentence: string,
+  explanation: Explanation | null,
+  note: string | null,
+  rect: DOMRect,
+  onClose: () => void,
+): void {
+  popup ??= createPopup();
+  const parts: HTMLElement[] = [line("sentence", `✨ ${sentence}`, "ja")];
+  if (note) parts.push(line("note", note));
+  if (explanation) {
+    parts.push(line("translation", explanation.translation));
+    const notes = document.createElement("ul");
+    notes.className = "notes";
+    for (const { part, explanation: text } of explanation.notes) {
+      const item = document.createElement("li");
+      const label = document.createElement("span");
+      label.className = "part";
+      label.lang = "ja";
+      label.textContent = part;
+      // Shows AI text as plain text only, as the build plan's security section asks.
+      item.append(label, document.createTextNode(` — ${text}`));
+      notes.append(item);
+    }
+    parts.push(notes);
+  }
+  status = document.createElement("div");
+  status.className = "status";
+  status.textContent = "Esc to close";
+  status.append(chip("Close", onClose));
+  popup.replaceChildren(...parts, status);
+  popup.classList.add("picking");
+  popup.hidden = false;
+  positionPopup(popup, rect.left, rect.bottom);
 }
 
 // Hides the pop-up if it's showing.

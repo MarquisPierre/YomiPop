@@ -1,6 +1,10 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { requireUser } from "../requireUser.js";
 import { cached } from "../services/ai/cache.js";
+import {
+  explainSentence,
+  MAX_SENTENCE_LENGTH,
+} from "../services/ai/explain.js";
 import { AiUnavailableError } from "../services/ai/gemini.js";
 import { findImages } from "../services/ai/images.js";
 import { writeSentences } from "../services/ai/sentences.js";
@@ -28,6 +32,17 @@ const wordSchema = {
     word: { type: "string", minLength: 1, maxLength: 30 },
     reading: { type: "string", maxLength: 60 },
     meaning: { type: "string", minLength: 1, maxLength: 200 },
+    fresh: { type: "boolean" },
+  },
+} as const;
+
+// Checks explain requests: a sentence up to the length limit, and whether fresh results are wanted.
+const explainSchema = {
+  type: "object",
+  required: ["sentence"],
+  additionalProperties: false,
+  properties: {
+    sentence: { type: "string", minLength: 1, maxLength: MAX_SENTENCE_LENGTH },
     fresh: { type: "boolean" },
   },
 } as const;
@@ -96,6 +111,31 @@ export async function aiRoutes(app: FastifyInstance): Promise<void> {
           fresh,
         );
         return { images };
+      } catch (error) {
+        return sendAiError(error, reply);
+      }
+    },
+  );
+
+  // Translates a highlighted sentence and explains its grammar, reusing saved results when it can.
+  app.post<{ Body: { sentence: string; fresh?: boolean } }>(
+    "/ai/explain",
+    { schema: { body: explainSchema } },
+    async (request, reply) => {
+      const sentence = request.body.sentence.trim();
+      try {
+        const explanation = await cached(
+          `explain|${sentence}`,
+          async () => {
+            await checkAiLimit(request.userId);
+            const result = await explainSentence(sentence);
+            // Counts the request only now that it worked.
+            await recordAiRequest(request.userId, "explain");
+            return result;
+          },
+          request.body.fresh ?? false,
+        );
+        return explanation;
       } catch (error) {
         return sendAiError(error, reply);
       }

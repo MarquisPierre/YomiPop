@@ -3,6 +3,7 @@ import type {
   AiMessage,
   AiResult,
   ExampleSentence,
+  ExplainResult,
   FoundImage,
 } from "../messages";
 import { getSessionToken } from "../session";
@@ -43,6 +44,32 @@ export async function askAi(
     return items.length > 0
       ? { ok: true, items }
       : { ok: false, message: "Nothing found" };
+  } catch {
+    return { ok: false, message: "Couldn't reach YomiPop" };
+  }
+}
+
+// Asks the API to translate a highlighted sentence and explain its grammar.
+export async function askExplain(sentence: string): Promise<ExplainResult> {
+  const token = await getSessionToken();
+  if (!token) return { ok: false, message: "Log in from the YomiPop menu" };
+  try {
+    const response = await fetch(`${WEB_URL}/api/ai/explain`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ sentence }),
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: body?.message ?? "AI isn't available right now",
+      };
+    }
+    return { ok: true, explanation: body };
   } catch {
     return { ok: false, message: "Couldn't reach YomiPop" };
   }
