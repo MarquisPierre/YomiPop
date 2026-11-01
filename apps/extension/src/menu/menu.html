@@ -53,6 +53,10 @@
         font: inherit;
         cursor: pointer;
       }
+      .review {
+        margin: 10px 0 0;
+        color: #f0f3f6;
+      }
       [hidden] {
         display: none;
       }
@@ -62,6 +66,8 @@
     <h1>YomiPop</h1>
     <div class="account">
       <p id="account-status">Checking login…</p>
+      <p id="review-status" class="review" hidden></p>
+      <button id="start-review" hidden>Start review</button>
       <button id="log-in" hidden>Log in</button>
       <button id="log-out" hidden>Log out</button>
     </div>

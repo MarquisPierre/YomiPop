@@ -1,7 +1,7 @@
 import { WEB_URL } from "./config";
 
 // Lists the names Better Auth gives the login cookie. Sites on https use the second one.
-const COOKIE_NAMES = [
+export const COOKIE_NAMES = [
   "better-auth.session_token",
   "__Secure-better-auth.session_token",
 ];
@@ -36,6 +36,29 @@ export async function signOut(): Promise<void> {
   }
   for (const name of COOKIE_NAMES) {
     await chrome.cookies.remove({ url: WEB_URL, name });
+  }
+}
+
+// Describes the review numbers the menu and toolbar icon show.
+export interface ReviewStats {
+  dueNow: number;
+  streak: number;
+}
+
+// Asks the API how many cards are due, or returns null if nobody is logged in or it's unreachable.
+export async function getReviewStats(): Promise<ReviewStats | null> {
+  const token = await getSessionToken();
+  if (!token) return null;
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    const response = await fetch(
+      `${WEB_URL}/api/cards/stats?timeZone=${encodeURIComponent(timeZone)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
   }
 }
 
