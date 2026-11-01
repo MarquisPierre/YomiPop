@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
+import { prisma } from "../db.js";
+import { DEMO_MESSAGE, isDemoEmail } from "../demo.js";
 import { requireUser } from "../requireUser.js";
 import {
   createUploadLink,
@@ -28,6 +30,15 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
     "/media/upload-url",
     { schema: { body: uploadSchema } },
     async (request, reply) => {
+      // Turns off uploads for the demo account, so visitors can't host files in our storage.
+      const user = await prisma.user.findUnique({
+        where: { id: request.userId },
+        select: { email: true },
+      });
+      if (isDemoEmail(user?.email)) {
+        return reply.code(403).send({ message: DEMO_MESSAGE });
+      }
+
       const path = `${request.userId}/${randomUUID()}.webp`;
       try {
         return await createUploadLink(BUCKETS[request.body.kind], path);

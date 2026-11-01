@@ -1,12 +1,69 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import {
+  APIError,
+  createAuthMiddleware,
+  getSessionFromCtx,
+} from "better-auth/api";
 import { bearer } from "better-auth/plugins/bearer";
 import { prisma } from "./db.js";
+import { DEMO_MESSAGE, isDemoEmail } from "./demo.js";
 import { sendEmail } from "./email.js";
 import { deleteUserFiles } from "./services/storage.js";
 
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
 const WEB_URL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+
+// Lists the account changes the demo account can't make, so one visitor can't lock out the rest.
+const DEMO_BLOCKED_PATHS = new Set([
+  "/update-user",
+  "/change-password",
+  "/change-email",
+  "/delete-user",
+  "/revoke-session",
+  "/revoke-sessions",
+  "/revoke-other-sessions",
+  "/link-social",
+  "/unlink-account",
+]);
+
+// Stops changes to the demo account before Better Auth makes them. It's a plugin so its
+// matcher can limit it to the few account routes, keeping other requests fast.
+const demoLock = {
+  id: "demo-lock",
+  hooks: {
+    before: [
+      {
+        matcher: (ctx) =>
+          DEMO_BLOCKED_PATHS.has(ctx.path ?? "") ||
+          ctx.path === "/request-password-reset",
+        handler: createAuthMiddleware(async (ctx) => {
+          // Refuses reset emails for the demo account, since visitors can't read its inbox anyway.
+          if (ctx.path === "/request-password-reset") {
+            if (isDemoEmail(ctx.body?.email)) {
+              throw new APIError("FORBIDDEN", { message: DEMO_MESSAGE });
+            }
+            return;
+          }
+          // Finds who's asking from the website's sign-in cookie, or else from the extension's
+          // token, which bearer() only turns into a cookie after every check has run.
+          let email = (await getSessionFromCtx(ctx))?.user.email;
+          const header = ctx.headers?.get("authorization") ?? "";
+          if (!email && header.toLowerCase().startsWith("bearer ")) {
+            // Keeps only the token part; the rest is its signature.
+            const token =
+              decodeURIComponent(header.slice(7).trim()).split(".")[0] ?? "";
+            const found = await ctx.context.internalAdapter.findSession(token);
+            email = found?.user.email;
+          }
+          if (isDemoEmail(email)) {
+            throw new APIError("FORBIDDEN", { message: DEMO_MESSAGE });
+          }
+        }),
+      },
+    ],
+  },
+} satisfies BetterAuthPlugin;
 
 // Handles sign-up, log-in and sessions.
 export const auth = betterAuth({
@@ -72,5 +129,5 @@ export const auth = betterAuth({
   // Logs a Google user into the existing account with the same email, since Google has checked it.
   account: { accountLinking: { trustedProviders: ["google"] } },
   trustedOrigins: [process.env.WEB_ORIGIN ?? "http://localhost:3000"],
-  plugins: [bearer()],
+  plugins: [bearer(), demoLock],
 });
