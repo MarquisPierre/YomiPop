@@ -1,0 +1,49 @@
+# Checks every push and pull request: lint, formatting, types, tests and builds,
+# as the build plan's "proof of quality" section asks.
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # Lets Prisma build its client. CI never connects to a database.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node 24, the version the app needs
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install packages exactly as locked
+        run: npm ci
+
+      - name: Generate the Prisma client the API's code imports
+        run: npx prisma generate
+        working-directory: apps/api
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type-check the API and extension
+        run: npm run typecheck
+
+      - name: Run the tests
+        run: npm test
+
+      # Building the website also type-checks it.
+      - name: Build everything
+        run: |
+          npm run build -w apps/api
+          npm run build -w apps/web
+          npm run build -w apps/extension
