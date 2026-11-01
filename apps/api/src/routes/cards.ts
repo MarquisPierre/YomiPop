@@ -20,6 +20,14 @@ import {
 } from "../today.js";
 
 // Describes the body of a request to add a card.
+// Describes a picture chosen for a new card.
+interface NewImage {
+  url: string;
+  attribution: string;
+  width?: number;
+  height?: number;
+}
+
 interface NewCard {
   word: string;
   reading: string;
@@ -28,7 +36,13 @@ interface NewCard {
   sentence?: string | null;
   translation?: string | null;
   deckId?: string;
+  image?: NewImage;
 }
+
+// Picks out the picture fields to send with each card.
+const CARD_IMAGE = {
+  image: { select: { url: true, attribution: true } },
+} as const;
 
 // Checks new cards before they're saved.
 const newCardSchema = {
@@ -43,6 +57,22 @@ const newCardSchema = {
     sentence: { type: ["string", "null"], maxLength: 300 },
     translation: { type: ["string", "null"], maxLength: 500 },
     deckId: { type: "string" },
+    image: {
+      type: "object",
+      required: ["url", "attribution"],
+      additionalProperties: false,
+      properties: {
+        // Only accepts Pexels pictures, the one image source the app uses.
+        url: {
+          type: "string",
+          maxLength: 500,
+          pattern: "^https://images\\.pexels\\.com/",
+        },
+        attribution: { type: "string", maxLength: 200 },
+        width: { type: "integer" },
+        height: { type: "integer" },
+      },
+    },
   },
 } as const;
 
@@ -52,7 +82,9 @@ type CardChanges = Partial<
     NewCard,
     "word" | "reading" | "meanings" | "sentence" | "translation" | "deckId"
   >
->;
+> & {
+  imageId?: null;
+};
 
 // Checks card edits. The word, reading, meanings, sentence, translation and deck can change, never the schedule.
 const cardChangesSchema = {
@@ -66,6 +98,8 @@ const cardChangesSchema = {
     sentence: { type: ["string", "null"], maxLength: 300 },
     translation: { type: ["string", "null"], maxLength: 500 },
     deckId: { type: "string" },
+    // Removes the card's picture. Null is the only value allowed.
+    imageId: { type: "null" },
   },
 } as const;
 
@@ -107,6 +141,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
     return prisma.card.findMany({
       where: { userId: request.userId },
       orderBy: { createdAt: "desc" },
+      include: CARD_IMAGE,
     });
   });
 
@@ -144,8 +179,23 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
         : await getDefaultDeck(userId);
       if (!deck) return reply.code(400).send({ message: "Unknown deck" });
 
-      const card = await prisma.card.create({
-        data: { ...request.body, userId, deckId: deck.id },
+      // Saves the picture first, then the card pointing to it, together so neither is left half-saved.
+      const { image, ...fields } = request.body;
+      const card = await prisma.$transaction(async (tx) => {
+        const media = image
+          ? await tx.media.create({
+              data: { ...image, userId, source: "search" },
+            })
+          : null;
+        return tx.card.create({
+          data: {
+            ...fields,
+            userId,
+            deckId: deck.id,
+            imageId: media?.id ?? null,
+          },
+          include: CARD_IMAGE,
+        });
       });
       return reply.code(201).send(card);
     },
@@ -172,6 +222,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
       return prisma.card.update({
         where: { id: request.params.id },
         data: request.body,
+        include: CARD_IMAGE,
       });
     },
   );
@@ -212,11 +263,13 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
           dueAt: { lte: new Date() },
         },
         orderBy: { dueAt: "asc" },
+        include: CARD_IMAGE,
       });
       const fresh = await prisma.card.findMany({
         where: { userId, ...inDeck, state: NEW_CARD },
         orderBy: { createdAt: "asc" },
         take: await newCardsLeftToday(userId, timeZone),
+        include: CARD_IMAGE,
       });
       return [...started, ...fresh];
     },
