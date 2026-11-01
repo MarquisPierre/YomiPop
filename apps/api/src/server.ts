@@ -1,5 +1,6 @@
 import "dotenv/config";
 import Fastify from "fastify";
+import { aiRoutes } from "./routes/ai.js";
 import { authRoutes } from "./routes/auth.js";
 import { cardRoutes } from "./routes/cards.js";
 import { deckRoutes } from "./routes/decks.js";
@@ -19,6 +20,7 @@ app.register(authRoutes);
 app.register(cardRoutes, { prefix: "/api" });
 app.register(settingsRoutes, { prefix: "/api" });
 app.register(deckRoutes, { prefix: "/api" });
+app.register(aiRoutes, { prefix: "/api" });
 
 const port = Number(process.env.PORT ?? 4000);
 
