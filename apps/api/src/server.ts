@@ -4,6 +4,7 @@ import { aiRoutes } from "./routes/ai.js";
 import { authRoutes } from "./routes/auth.js";
 import { cardRoutes } from "./routes/cards.js";
 import { deckRoutes } from "./routes/decks.js";
+import { mediaRoutes } from "./routes/media.js";
 import { settingsRoutes } from "./routes/settings.js";
 
 // Rejects request bodies with unknown fields instead of quietly dropping them.
@@ -21,6 +22,7 @@ app.register(cardRoutes, { prefix: "/api" });
 app.register(settingsRoutes, { prefix: "/api" });
 app.register(deckRoutes, { prefix: "/api" });
 app.register(aiRoutes, { prefix: "/api" });
+app.register(mediaRoutes, { prefix: "/api" });
 
 const port = Number(process.env.PORT ?? 4000);
 

@@ -14,7 +14,8 @@ export interface Card {
   // Counts how many times the card has been answered.
   reps: number;
   // Holds the card's picture and its credit line, or null when it has none.
-  image: { url: string; attribution: string } | null;
+  // Uploads have no credit line, so their attribution is null.
+  image: { url: string; attribution: string | null } | null;
 }
 
 // Lists the answers: 1 = Again, 2 = Hard, 3 = Good, 4 = Easy.
@@ -38,7 +39,7 @@ export type CardChanges = Partial<
 > & {
   // Removes the card's picture. Null is the only value allowed.
   imageId?: null;
-  image?: FoundImage;
+  image?: ChosenImage;
 };
 
 // Describes an AI-made example sentence, as the API sends it.
@@ -65,6 +66,15 @@ export async function getAiSentences(
   });
   await checkResponseWithReason(response);
   return (await response.json()).sentences;
+}
+
+// Describes a picture chosen for a card: an Unsplash photo with its credit, or the user's own upload.
+export interface ChosenImage {
+  url: string;
+  width?: number;
+  height?: number;
+  attribution?: string;
+  downloadLocation?: string;
 }
 
 // Describes a picture found for a card, as the API sends it.
@@ -250,4 +260,74 @@ export async function renameDeck(id: string, name: string): Promise<void> {
 export async function deleteDeck(id: string): Promise<void> {
   const response = await fetch(`${DECKS_URL}/${id}`, { method: "DELETE" });
   await checkResponseWithReason(response);
+}
+
+// Lists the picture types the build plan allows.
+const PICTURE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+// Shrinks a picture in the browser to WebP, as the build plan's "resize to one size" rule asks:
+// a centred square for profile pictures, or a set width for cards.
+async function shrinkToWebp(
+  file: File,
+  size: number,
+  square: boolean,
+): Promise<{ blob: Blob; width: number; height: number }> {
+  const bitmap = await createImageBitmap(file);
+  // Crops the middle square for a profile picture; keeps the whole picture for a card.
+  const side = Math.min(bitmap.width, bitmap.height);
+  const crop = square
+    ? {
+        x: (bitmap.width - side) / 2,
+        y: (bitmap.height - side) / 2,
+        w: side,
+        h: side,
+      }
+    : { x: 0, y: 0, w: bitmap.width, h: bitmap.height };
+  // Never makes a small picture bigger.
+  const width = Math.min(size, crop.w);
+  const height = Math.round((crop.h / crop.w) * width);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas
+    .getContext("2d")!
+    .drawImage(bitmap, crop.x, crop.y, crop.w, crop.h, 0, 0, width, height);
+  const blob = await new Promise<Blob | null>((done) =>
+    canvas.toBlob(done, "image/webp", 0.85),
+  );
+  if (!blob) throw new ApiError("Couldn't read that picture.");
+  return { blob, width, height };
+}
+
+// Uploads a picture from the user's device: shrinks it, asks the API for a one-time link,
+// sends it straight to storage, and returns its public link.
+export async function uploadPicture(
+  file: File,
+  kind: "avatar" | "card",
+): Promise<ChosenImage> {
+  if (!PICTURE_TYPES.includes(file.type)) {
+    throw new ApiError("Pick a JPG, PNG or WebP picture.");
+  }
+  const { blob, width, height } = await shrinkToWebp(
+    file,
+    kind === "avatar" ? 256 : 512,
+    kind === "avatar",
+  );
+
+  const response = await fetch("/api/media/upload-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind }),
+  });
+  await checkResponseWithReason(response);
+  const { uploadUrl, publicUrl } = await response.json();
+
+  const upload = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "image/webp" },
+    body: blob,
+  });
+  if (!upload.ok) throw new ApiError("Couldn't upload the picture.");
+  return { url: publicUrl, width, height };
 }

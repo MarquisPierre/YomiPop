@@ -70,12 +70,22 @@ export function Header() {
           {isPending ? null : session ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                {/* Shows the user's initial in a round button that opens the menu. */}
+                {/* Shows the user's picture, or their initial, in a round button that opens the menu. */}
                 <button
                   aria-label="Account menu"
-                  className="flex size-10 cursor-pointer items-center justify-center rounded-full border-2 border-border bg-foreground font-display text-base font-bold text-background transition-colors hover:border-primary data-[state=open]:border-primary"
+                  className="flex size-10 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-border bg-foreground font-display text-base font-bold text-background transition-colors hover:border-primary data-[state=open]:border-primary"
                 >
-                  {session.user.name.slice(0, 1).toUpperCase()}
+                  {session.user.image ? (
+                    // Leaves the picture without a description, since the menu names the user.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={session.user.image}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    session.user.name.slice(0, 1).toUpperCase()
+                  )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">

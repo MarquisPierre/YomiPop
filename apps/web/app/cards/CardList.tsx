@@ -11,9 +11,12 @@ import {
   updateCard,
   type Card,
   type Deck,
-  type FoundImage,
+  type ChosenImage,
+  uploadPicture,
+  ApiError,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { UploadButton } from "../UploadButton";
 import { Input } from "@/components/ui/input";
 import { CardImage } from "../review/CardImage";
 import { CardPreview } from "./CardPreview";
@@ -66,7 +69,7 @@ export function CardList() {
   const [editPicker, setEditPicker] = useState<"sentence" | "picture" | null>(
     null,
   );
-  const [newImage, setNewImage] = useState<FoundImage | null>(null);
+  const [newImage, setNewImage] = useState<ChosenImage | null>(null);
   // Points at the sentence and translation boxes, so an AI sentence can fill them.
   const sentenceInput = useRef<HTMLInputElement>(null);
   const translationInput = useRef<HTMLInputElement>(null);
@@ -343,6 +346,21 @@ export function CardList() {
                           ? "Change picture"
                           : "Add picture"}
                       </Button>
+                      {/* Uploads a picture from the device; it saves with the card on Save. */}
+                      <UploadButton
+                        label="Upload from device"
+                        onFile={async (file) => {
+                          try {
+                            setNewImage(await uploadPicture(file, "card"));
+                          } catch (error) {
+                            setError(
+                              error instanceof ApiError
+                                ? error.message
+                                : "Couldn't upload the picture.",
+                            );
+                          }
+                        }}
+                      />
                       {card.image && !newImage && (
                         <label className="flex items-center gap-2 text-sm text-muted-foreground">
                           <input
