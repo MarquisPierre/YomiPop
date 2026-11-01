@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // Lets the end-to-end tests build into their own folder, so they don't clash with the dev server's.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   cacheComponents: true,
   partialPrefetching: true,
   // Forwards every /api request to the API, so the browser only ever talks to this site.
