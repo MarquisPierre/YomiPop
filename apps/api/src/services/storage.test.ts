@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createUploadLink,
+  deleteUserFiles,
   StorageUnavailableError,
   uploadPublicFile,
 } from "./storage.js";
@@ -101,5 +102,45 @@ describe("createUploadLink", () => {
     await expect(
       createUploadLink("avatars", "u1/x.webp"),
     ).rejects.toBeInstanceOf(StorageUnavailableError);
+  });
+});
+
+describe("deleteUserFiles", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("lists the user's folder and deletes everything in it", async () => {
+    vi.stubEnv("SUPABASE_URL", "https://abc.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "secret");
+    // Answers the list with two files, then answers the delete.
+    const fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+      async (url) =>
+        url.includes("/object/list/")
+          ? new Response(
+              JSON.stringify([{ name: "a.webp" }, { name: "b.webp" }]),
+            )
+          : new Response("[]"),
+    );
+    vi.stubGlobal("fetch", fetch);
+    await deleteUserFiles("avatars", "u1");
+    const [address, init] = fetch.mock.calls[1]!;
+    expect(address).toBe("https://abc.supabase.co/storage/v1/object/avatars");
+    expect(init?.method).toBe("DELETE");
+    expect(JSON.parse(init?.body as string)).toEqual({
+      prefixes: ["u1/a.webp", "u1/b.webp"],
+    });
+  });
+
+  it("skips the delete when the folder is empty", async () => {
+    vi.stubEnv("SUPABASE_URL", "https://abc.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "secret");
+    const fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response("[]"),
+    );
+    vi.stubGlobal("fetch", fetch);
+    await deleteUserFiles("avatars", "u1");
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

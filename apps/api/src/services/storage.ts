@@ -76,3 +76,48 @@ export function publicBucketPrefix(bucket: string): string | null {
   const base = process.env.SUPABASE_URL?.replace(/\/$/, "");
   return base ? `${base}/storage/v1/object/public/${bucket}/` : null;
 }
+
+// Deletes every file in one user's folder of a bucket, e.g. when they delete their account.
+export async function deleteUserFiles(
+  bucket: string,
+  userId: string,
+): Promise<void> {
+  // Reads the settings when used, so tests can supply fake ones.
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    throw new StorageUnavailableError("Supabase isn't set up");
+  }
+  const base = SUPABASE_URL.replace(/\/$/, "");
+  const headers = {
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    "Content-Type": "application/json",
+  };
+
+  // Lists the files in the user's folder. Names come back without the folder part.
+  const listed = await fetch(`${base}/storage/v1/object/list/${bucket}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ prefix: `${userId}/`, limit: 1000 }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!listed.ok) {
+    throw new StorageUnavailableError(`Supabase answered ${listed.status}`);
+  }
+  const files = (await listed.json()) as { name: string }[];
+  // Stops early when the user never uploaded anything here.
+  if (files.length === 0) return;
+
+  // Deletes them all in one request, using their full paths.
+  const deleted = await fetch(`${base}/storage/v1/object/${bucket}`, {
+    method: "DELETE",
+    headers,
+    body: JSON.stringify({
+      prefixes: files.map((file) => `${userId}/${file.name}`),
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!deleted.ok) {
+    throw new StorageUnavailableError(`Supabase answered ${deleted.status}`);
+  }
+}

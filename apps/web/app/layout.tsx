@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { M_PLUS_Rounded_1c, Noto_Sans_JP } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { Header } from "./Header";
 
@@ -42,6 +43,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <Header />
         {children}
+        {/* Links the privacy policy from every page, as the Chrome Web Store expects. */}
+        <footer className="px-4 py-6 text-center text-sm text-muted-foreground">
+          <Link href="/privacy" className="underline-offset-4 hover:underline">
+            Privacy policy
+          </Link>
+        </footer>
       </body>
     </html>
   );
