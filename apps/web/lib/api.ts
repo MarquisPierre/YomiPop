@@ -56,9 +56,15 @@ export async function deleteCard(id: string): Promise<void> {
   checkResponse(response);
 }
 
-// Fetches the cards that are due now.
+// Builds the time zone part of a request, so the API counts days the way the user sees them.
+function timeZoneQuery(): string {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return `timeZone=${encodeURIComponent(timeZone)}`;
+}
+
+// Fetches the cards to review now, with new cards held to today's limit.
 export async function getDueCards(): Promise<Card[]> {
-  const response = await fetch(`${CARDS_URL}/due`);
+  const response = await fetch(`${CARDS_URL}/due?${timeZoneQuery()}`);
   checkResponse(response);
   return response.json();
 }
@@ -73,10 +79,7 @@ export interface ReviewStats {
 
 // Fetches the review stats, counting days in the browser's time zone.
 export async function getStats(): Promise<ReviewStats> {
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const response = await fetch(
-    `${CARDS_URL}/stats?timeZone=${encodeURIComponent(timeZone)}`,
-  );
+  const response = await fetch(`${CARDS_URL}/stats?${timeZoneQuery()}`);
   checkResponse(response);
   return response.json();
 }
@@ -96,4 +99,30 @@ export async function reviewCard(id: string, rating: Rating): Promise<void> {
     body: JSON.stringify({ rating }),
   });
   checkResponse(response);
+}
+
+// Points at the settings routes.
+const SETTINGS_URL = "/api/settings";
+
+// Describes the settings a user can change.
+export interface Settings {
+  newCardsPerDay: number;
+}
+
+// Fetches the user's settings.
+export async function getSettings(): Promise<Settings> {
+  const response = await fetch(SETTINGS_URL);
+  checkResponse(response);
+  return response.json();
+}
+
+// Saves the user's settings and returns them as stored.
+export async function updateSettings(settings: Settings): Promise<Settings> {
+  const response = await fetch(SETTINGS_URL, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+  checkResponse(response);
+  return response.json();
 }

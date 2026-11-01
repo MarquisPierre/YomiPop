@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { authClient } from "@/lib/authClient";
 import { PasswordInput } from "../PasswordInput";
+import { ReviewSettings } from "./ReviewSettings";
 
 // Shows the user's details and lets them delete their account.
 export function AccountSettings() {
@@ -61,6 +62,8 @@ export function AccountSettings() {
         <p>{session.user.name}</p>
         <p className="text-zinc-500">{session.user.email}</p>
       </section>
+
+      <ReviewSettings />
 
       <section className="flex flex-col gap-3 rounded-lg border border-red-300 p-4 dark:border-red-900">
         <h2 className="font-semibold text-red-600">Danger zone</h2>

@@ -2,6 +2,7 @@ import "dotenv/config";
 import Fastify from "fastify";
 import { authRoutes } from "./routes/auth.js";
 import { cardRoutes } from "./routes/cards.js";
+import { settingsRoutes } from "./routes/settings.js";
 
 // Rejects request bodies with unknown fields instead of quietly dropping them.
 const app = Fastify({
@@ -15,6 +16,7 @@ app.get("/health", async () => {
 
 app.register(authRoutes);
 app.register(cardRoutes, { prefix: "/api" });
+app.register(settingsRoutes, { prefix: "/api" });
 
 const port = Number(process.env.PORT ?? 4000);
 

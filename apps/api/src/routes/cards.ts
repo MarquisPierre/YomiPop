@@ -1,8 +1,7 @@
-import { fromNodeHeaders } from "better-auth/node";
 import type { FastifyInstance } from "fastify";
 import type { Grade } from "ts-fsrs";
-import { auth } from "../auth.js";
 import { prisma } from "../db.js";
+import { requireUser } from "../requireUser.js";
 import {
   fromSchedulerCard,
   restoreSchedule,
@@ -10,12 +9,6 @@ import {
   scheduler,
   toSchedulerCard,
 } from "../scheduler.js";
-
-declare module "fastify" {
-  interface FastifyRequest {
-    userId: string;
-  }
-}
 
 // Describes the body of a request to add a card.
 interface NewCard {
@@ -71,8 +64,8 @@ const reviewSchema = {
   },
 } as const;
 
-// Checks the stats request, which needs the user's time zone to know when their day starts.
-const statsSchema = {
+// Checks requests that need the user's time zone to know when their day starts.
+const timeZoneSchema = {
   type: "object",
   required: ["timeZone"],
   properties: { timeZone: { type: "string", minLength: 1 } },
@@ -106,18 +99,37 @@ function countStreak(reviewDays: Set<string>, today: string): number {
   return streak;
 }
 
+// Marks a card that has never been answered. It's how ts-fsrs numbers the "new" state.
+const NEW_CARD = 0;
+
+// Counts how many more brand-new cards the user can start today, in their time zone.
+// A card uses up a slot when it gets its first answer today; undoing that answer gives it back.
+async function newCardsLeftToday(
+  userId: string,
+  timeZone: string,
+): Promise<number> {
+  const { newCardsPerDay } = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { newCardsPerDay: true },
+  });
+
+  // Finds today's answers given to cards that were new at the time.
+  const [row] = await prisma.$queryRaw<{ started: bigint }[]>`
+    SELECT count(*) AS started
+    FROM "Review"
+    JOIN "Card" ON "Card".id = "Review"."cardId"
+    WHERE "Card"."userId" = ${userId}
+      AND ("Review"."previousState"->>'state')::int = ${NEW_CARD}
+      AND ("Review"."reviewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timeZone})::date
+        = (now() AT TIME ZONE ${timeZone})::date
+  `;
+  return Math.max(0, newCardsPerDay - Number(row?.started ?? 0));
+}
+
 // Adds the card routes to the server.
 export async function cardRoutes(app: FastifyInstance): Promise<void> {
-  app.decorateRequest("userId", "");
-
-  // Rejects requests from anyone who isn't logged in, and remembers who's asking.
-  app.addHook("preHandler", async (request, reply) => {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(request.headers),
-    });
-    if (!session) return reply.code(401).send({ message: "Not logged in" });
-    request.userId = session.user.id;
-  });
+  // Makes every card route require a logged-in user.
+  requireUser(app);
 
   // Lists the user's cards, newest first.
   app.get("/cards", async (request) => {
@@ -189,19 +201,36 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // Lists the user's cards that are due now, oldest first.
-  app.get("/cards/due", async (request) => {
-    return prisma.card.findMany({
-      where: { userId: request.userId, dueAt: { lte: new Date() } },
-      orderBy: { dueAt: "asc" },
-    });
-  });
+  // Lists the cards to review now: every started card that's due, oldest first,
+  // then brand-new cards, oldest saved first, up to what's left of today's limit.
+  app.get<{ Querystring: { timeZone: string } }>(
+    "/cards/due",
+    { schema: { querystring: timeZoneSchema } },
+    async (request, reply) => {
+      const { userId } = request;
+      const { timeZone } = request.query;
+      if (!isTimeZone(timeZone)) {
+        return reply.code(400).send({ message: "Unknown time zone" });
+      }
+
+      const started = await prisma.card.findMany({
+        where: { userId, state: { not: NEW_CARD }, dueAt: { lte: new Date() } },
+        orderBy: { dueAt: "asc" },
+      });
+      const fresh = await prisma.card.findMany({
+        where: { userId, state: NEW_CARD },
+        orderBy: { createdAt: "asc" },
+        take: await newCardsLeftToday(userId, timeZone),
+      });
+      return [...started, ...fresh];
+    },
+  );
 
   // Counts cards due now and later today, reviews today, and the review streak.
   // Days are counted in the user's time zone, since the server runs on UTC.
   app.get<{ Querystring: { timeZone: string } }>(
     "/cards/stats",
-    { schema: { querystring: statsSchema } },
+    { schema: { querystring: timeZoneSchema } },
     async (request, reply) => {
       const { userId } = request;
       const { timeZone } = request.query;
@@ -212,11 +241,17 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
       // Dates are stored in UTC without a zone, so they're tagged as UTC before converting.
       // Counting always returns exactly one row.
       const [counts] = await prisma.$queryRaw<
-        { today: string; dueNow: bigint; laterToday: bigint }[]
+        {
+          today: string;
+          dueNow: bigint;
+          newCards: bigint;
+          laterToday: bigint;
+        }[]
       >`
         SELECT
           to_char(now() AT TIME ZONE ${timeZone}, 'YYYY-MM-DD') AS today,
-          count(*) FILTER (WHERE "dueAt" <= now() AT TIME ZONE 'UTC') AS "dueNow",
+          count(*) FILTER (WHERE "dueAt" <= now() AT TIME ZONE 'UTC' AND state <> ${NEW_CARD}) AS "dueNow",
+          count(*) FILTER (WHERE state = ${NEW_CARD}) AS "newCards",
           count(*) FILTER (
             WHERE "dueAt" > now() AT TIME ZONE 'UTC'
               AND "dueAt" < (((now() AT TIME ZONE ${timeZone})::date + 1)::timestamp AT TIME ZONE ${timeZone}) AT TIME ZONE 'UTC'
@@ -236,8 +271,13 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
 
       if (!counts) throw new Error("Stats query returned no row");
       const today = counts.today;
+      // Adds the new cards the review will actually bring in today, not all of them.
+      const newToday = Math.min(
+        Number(counts.newCards),
+        await newCardsLeftToday(userId, timeZone),
+      );
       return {
-        dueNow: Number(counts.dueNow),
+        dueNow: Number(counts.dueNow) + newToday,
         laterToday: Number(counts.laterToday),
         reviewedToday: Number(
           days.find((row) => row.day === today)?.reviews ?? 0,
