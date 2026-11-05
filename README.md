@@ -4,7 +4,7 @@
 
 Read Japanese anywhere on the web, save the words you meet, and review them on cards that come back right before you forget.
 
-**Live:** https://yomipop.vercel.app · **Demo login:** `marquispierre27+demo@gmail.com` / `demoguy123` (sample decks are ready to review; no extension needed)
+**Install:** [Chrome Web Store](https://chromewebstore.google.com/detail/yomipop/ijooliheidehdicjpmnhhaiioajlmgmj) · **Live:** https://yomipop.vercel.app · **Demo login:** `marquispierre27+demo@gmail.com` / `demoguy123` (sample decks are ready to review)
 
 ![Hovering a Japanese word on NHK News, then building a card with an AI sentence and a picture and saving it](docs/demo.gif)
 
@@ -126,7 +126,6 @@ Every AI and storage feature falls back gracefully without its key: the app stil
 
 ## What's next
 
-- **Chrome Web Store:** submitted and in review.
 - **Phone app:** make the website installable, with a review screen built for thumbs.
 - **More Anki features:** suspend and bury, tags, a stats heatmap, and CSV import and export.
 - **Error monitoring** with Sentry.
