@@ -7,7 +7,7 @@ Read Japanese anywhere on the web, save the words you meet, and review them on c
 [![Add to Chrome](https://img.shields.io/badge/Add_to_Chrome-Chrome_Web_Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/yomipop/ijooliheidehdicjpmnhhaiioajlmgmj)
 [![Open the website](https://img.shields.io/badge/Open_the_website-yomipop.vercel.app-C8352A?style=for-the-badge)](https://yomipop.vercel.app)
 
-<sub>🔑 No sign-up needed: log in with `marquispierre27+demo@gmail.com` / `demoguy123` to try the sample decks.</sub>
+**Try it on:** [NHK News](https://news.web.nhk/newsweb) · 🔑 **No sign-up needed:** log in with `marquispierre27+demo@gmail.com` / `demoguy123` to try the sample decks.
 
 ![Hovering a Japanese word on NHK News, then building a card with an AI sentence and a picture and saving it](docs/demo.gif)
 
