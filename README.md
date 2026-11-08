@@ -4,7 +4,10 @@
 
 Read Japanese anywhere on the web, save the words you meet, and review them on cards that come back right before you forget.
 
-**Install:** [Chrome Web Store](https://chromewebstore.google.com/detail/yomipop/ijooliheidehdicjpmnhhaiioajlmgmj) · **Live:** https://yomipop.vercel.app · **Example Site:** https://news.web.nhk/newsweb ·  **Demo login:** `marquispierre27+demo@gmail.com` / `demoguy123` (sample decks are ready to review) 
+[![Add to Chrome](https://img.shields.io/badge/Add_to_Chrome-Chrome_Web_Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/yomipop/ijooliheidehdicjpmnhhaiioajlmgmj)
+[![Open the website](https://img.shields.io/badge/Open_the_website-yomipop.vercel.app-C8352A?style=for-the-badge)](https://yomipop.vercel.app)
+
+**Try it on:** [NHK News](https://news.web.nhk/newsweb) · 🔑 **No sign-up needed:** log in with `marquispierre27+demo@gmail.com` / `demoguy123` to try the sample decks.
 
 ![Hovering a Japanese word on NHK News, then building a card with an AI sentence and a picture and saving it](docs/demo.gif)
 
