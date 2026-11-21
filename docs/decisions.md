@@ -91,3 +91,9 @@ One short entry per big choice: what was decided, the options, why, and the trad
 - **Options:** hand-written Tailwind; a component library; shadcn/ui.
 - **Why:** it copies readable components into the repo, built on Radix, so dialogs trap focus and menus work by keyboard, as the build plan's accessibility section asks.
 - **Trade-off:** the copied components are mine to keep up to date.
+
+## The API on AWS Lightsail, in Docker — 2026-11-20
+
+- **Options:** keep Render's free server with a pinger; Render's paid plan; AWS EC2; AWS Lightsail containers.
+- **Why:** the free server slept after 15 minutes, so visitors waited up to a minute, and the pinger kept turning itself off. Lightsail runs the API's Docker image on a server that never sleeps, with HTTPS built in, for a fixed price. GitHub Actions deploys every merge to `main` as an IAM user that can only push images and deploy, and the app's secrets stay in AWS.
+- **Trade-off:** it costs $7 a month (free credits cover the first six months), and the first deployment's settings were entered by hand in the Lightsail console.
