@@ -68,6 +68,10 @@ jobs:
           npm run build -w apps/web
           npm run build -w apps/extension
 
+      # Builds the API's container image, so a broken Dockerfile fails here, not in the deploy.
+      - name: Build the API's Docker image
+        run: docker build -f apps/api/Dockerfile -t yomipop-api:latest .
+
       - name: Install the test browser for the end-to-end tests
         run: npx playwright install --with-deps chromium
         working-directory: apps/web
@@ -102,3 +106,73 @@ jobs:
           name: yomipop-extension
           path: apps/extension/yomipop-extension.zip
           retention-days: 30
+
+  # Deploys the API to AWS Lightsail once every check passes on main.
+  deploy-api:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      SERVICE: yomipop-api
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Sign in to AWS as the deploy-only user
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      # Installs the plugin the AWS CLI needs to upload images to Lightsail.
+      - name: Install the Lightsail plugin
+        run: |
+          sudo curl -sSL https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl -o /usr/local/bin/lightsailctl
+          sudo chmod +x /usr/local/bin/lightsailctl
+
+      - name: Build the API image
+        run: docker build -f apps/api/Dockerfile -t yomipop-api:latest .
+
+      # Uploads the image and keeps the name Lightsail gives it, like :yomipop-api.api.3.
+      - name: Upload the image to Lightsail
+        id: push
+        run: |
+          output=$(aws lightsail push-container-image --service-name "$SERVICE" --label api --image yomipop-api:latest)
+          echo "$output"
+          echo "image=$(echo "$output" | grep -o ":$SERVICE\.api\.[0-9]*" | tail -1)" >> "$GITHUB_OUTPUT"
+
+      # Copies the settings from the last deployment, so the secrets live only in AWS.
+      - name: Deploy the new image
+        env:
+          IMAGE: ${{ steps.push.outputs.image }}
+        run: |
+          environment=$(aws lightsail get-container-service-deployments --service-name "$SERVICE" \
+            --query 'deployments[0].containers.api.environment' --output json)
+          if [ -z "$environment" ] || [ "$environment" = "null" ]; then
+            echo "::error::No earlier deployment to copy settings from. Create the first one in the Lightsail console with image $IMAGE."
+            exit 1
+          fi
+          containers=$(jq -n --arg image "$IMAGE" --argjson environment "$environment" \
+            '{api: {image: $image, environment: $environment, ports: {"4000": "HTTP"}}}')
+          aws lightsail create-container-service-deployment --service-name "$SERVICE" \
+            --containers "$containers" \
+            --public-endpoint '{"containerName": "api", "containerPort": 4000, "healthCheck": {"path": "/health"}}'
+
+      # Waits for the new version to go live, then checks /health answers.
+      - name: Wait for the deployment and check its health
+        run: |
+          for i in $(seq 1 40); do
+            state=$(aws lightsail get-container-service-deployments --service-name "$SERVICE" \
+              --query 'deployments[0].state' --output text)
+            echo "Deployment: $state"
+            [ "$state" = "ACTIVE" ] && break
+            if [ "$state" = "FAILED" ]; then
+              echo "::error::The deployment failed. Check the logs in the Lightsail console."
+              exit 1
+            fi
+            sleep 15
+          done
+          [ "$state" = "ACTIVE" ] || { echo "::error::The deployment didn't finish in 10 minutes."; exit 1; }
+          url=$(aws lightsail get-container-services --service-name "$SERVICE" \
+            --query 'containerServices[0].url' --output text)
+          curl --fail --silent --max-time 30 "${url}health"
