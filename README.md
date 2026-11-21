@@ -36,7 +36,7 @@ flowchart LR
     EXT[Chrome extension<br/>pop-up · JMdict in IndexedDB]
     WEB[Website<br/>Next.js on Vercel]
   end
-  API[API<br/>Fastify on Render]
+  API[API<br/>Fastify in Docker<br/>on AWS Lightsail]
   DB[(Postgres<br/>Neon)]
   STORE[(Pictures and audio<br/>Supabase Storage)]
   AI[Gemini<br/>sentences · grammar · voices]
@@ -68,12 +68,12 @@ Lookups never leave the browser: the dictionary lives in the extension. Everythi
 | AI         | Gemini (free tier): sentences, translations, grammar notes, voices |
 | Pictures   | Unsplash search, plus your own uploads                             |
 | Storage    | Supabase Storage                                                   |
-| Hosting    | Vercel (website), Render (API)                                     |
+| Hosting    | Vercel (website), AWS Lightsail with Docker (API)                  |
 | Quality    | Vitest, Playwright, axe, ESLint, Prettier, GitHub Actions CI       |
 
 ## Testing
 
-Every push runs the full suite in GitHub Actions, and `main` only accepts changes that pass.
+Every push runs the full suite in GitHub Actions, and `main` only accepts changes that pass. Every merge to `main` then builds the API's Docker image and deploys it to AWS, and the deploy fails unless the new version answers its health check.
 
 - **50+ unit and API tests** (Vitest), with the API tests hitting a real PostgreSQL database rather than mocks.
 - **Access tests** that sign in as two users and prove neither can read, change or delete the other's cards and decks, and that signed-out visitors are refused on every route.
@@ -95,7 +95,7 @@ Every big choice, and what it cost, is in the [decision log](docs/decisions.md).
 
 - **FSRS over SM-2:** fewer reviews for the same recall, but harder to explain.
 - **Better Auth over hand-built JWTs:** secure sign-in features fast, but less control over tokens.
-- **Free tiers everywhere:** the app costs nothing to run, but AI has daily limits, and outside business hours the first request can take up to a minute while the API wakes up.
+- **AWS Lightsail over free hosting for the API:** the site answers instantly instead of waking up for a minute, for $7 a month. Everything else stays on free tiers, so AI has daily limits.
 
 ## Running it locally
 
